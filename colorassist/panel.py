@@ -509,7 +509,6 @@ class Panel(QMainWindow):
                               ("Remove", "target_remove", self._remove_target)):
             bl.addWidget(self._button(text, key, fn))
         cl.addLayout(bl)
-        cl.addWidget(self._button("Add Minecraft armour targets", "target_add_armour", self._add_armour))
         c.setMinimumWidth(330)
         row.addWidget(c, 1)
 
@@ -1086,24 +1085,6 @@ class Panel(QMainWindow):
             self.status.setText("New target added. Click on the thing to outline; it switches on once its "
                                 "colour is picked.")
             self.pickColourRequested.emit()
-
-    def _add_armour(self):
-        from .config import add_armour_targets
-        added = add_armour_targets(self.cfg.profile)
-        self._reload_targets(select=len(self.cfg.profile.targets) - 1)
-        self.settingsChanged.emit()
-        if not added:
-            QMessageBox.information(self, APP_NAME, "This profile already has all the armour targets.")
-            return
-        off = [x.name for x in added if not x.enabled]
-        QMessageBox.information(
-            self, APP_NAME,
-            "Added %d armour targets to \u201c%s\u201d.\n\n"
-            "The colours are approximate. If armour is missed or the wrong things are outlined, select the target, "
-            "press \u201cPick colour from the game\u201d and click on the armour, then check the live preview.%s"
-            % (len(added), self.cfg.active_profile,
-               ("\n\nSwitched off because grey also matches stone and similar blocks: %s. Switch them on to try them."
-                % ", ".join(off)) if off else ""))
 
     def _dup_target(self):
         t = self._current_target()
