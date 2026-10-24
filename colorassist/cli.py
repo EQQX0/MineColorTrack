@@ -39,6 +39,7 @@ Colour targets (in the active profile, or --profile NAME)
   mct target set NAME KEY VALUE      KEY: enabled color hue_tol sat_min sat_max val_min val_max min_area
                                      max_area outline_color name
   mct target remove NAME
+  mct target add-armour              add Minecraft armour colours (plain and enchanted) to the profile
 AI model and entities
   mct model load FILE.onnx | mct model clear | mct model info
   mct entity list | mct entity set NAME enabled|outline_color VALUE
@@ -276,6 +277,12 @@ def cmd_target(b, a):
     act = a.action
     if act == "list":
         return {"profile": a.profile or cfg.active_profile, "targets": [asdict(t) for t in prof.targets]}
+    if act == "add-armour":
+        added = config.add_armour_targets(prof)
+        b.save(cfg)
+        return {"added": [t.name for t in added], "switched_off": [t.name for t in added if not t.enabled],
+                "note": "Approximate colours; re-pick with `mct target pick` if armour is missed.",
+                "applied_live": b.live}
     if act == "add":
         if any(t.name.lower() == a.name.lower() for t in prof.targets):
             raise CliError("Target %r already exists; use `mct target set`." % a.name)
@@ -566,7 +573,7 @@ def build_parser():
     p.add_argument("new", nargs="?")
 
     p = sub.add_parser("target", help="colour targets")
-    p.add_argument("action", choices=["list", "add", "set", "remove", "pick"])
+    p.add_argument("action", choices=["list", "add", "set", "remove", "pick", "add-armour"])
     p.add_argument("name", nargs="?")
     p.add_argument("rest", nargs="*", help="set: KEY VALUE   pick: IMAGE X Y")
     p.add_argument("--profile")
@@ -632,7 +639,7 @@ def main(argv=None):
                 a.image, a.x, a.y = rest[0], int(rest[1]), int(rest[2])
             except ValueError:
                 pass
-        if a.action != "list" and not a.name:
+        if a.action not in ("list", "add-armour") and not a.name:
             ap.error("target %s needs a NAME" % a.action)
     try:
         b = Backend(a.config, offline=a.offline)

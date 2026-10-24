@@ -138,3 +138,13 @@ def test_live_control_of_running_app(tmp_path):
     assert results["toggle"][1]["outline_enabled"] is False and cfg.profile.outline.enabled is False
     assert config.load(path).profile.outline.thickness == 9                   # and saved
     ctl.panel.close()
+
+
+def test_armour_targets(cfg_path):
+    code, res = run(cfg_path, "target", "add-armour")
+    assert code == 0 and len(res["added"]) == 12
+    assert set(res["switched_off"]) == {"Chainmail armour", "Iron armour", "Netherite armour"}
+    assert run(cfg_path, "target", "add-armour")[1]["added"] == []          # adding twice adds nothing
+    names = [t["name"] for t in run(cfg_path, "target", "list")[1]["targets"]]
+    assert "Diamond armour (enchanted)" in names and len(names) == 12
+    assert config.default_config().profile.targets == []                    # new profiles still start empty

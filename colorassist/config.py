@@ -155,6 +155,41 @@ def default_profiles():
     return {STARTER_PROFILE: Profile()}
 
 
+def minecraft_armour_targets():
+    """Optional Minecraft armour colours (added only when asked: Targets > Add Minecraft armour targets).
+
+    Approximate colours of the default textures; lighting, texture packs and the stream change them, so re-pick
+    them in your own game when they miss. Enchanted armour has a moving purple shimmer on top, so its range is
+    wider. Plain chainmail, iron and netherite are grey and also match stone, gravel and similar blocks, so they
+    start switched off.
+    """
+    def t(name, color, outline, hue_tol, sat_min, val_min, enabled=True, min_area=30):
+        return Target(name=name, enabled=enabled, color=color, hue_tol=hue_tol, sat_min=sat_min, val_min=val_min,
+                      min_area=min_area, outline_color=outline)
+    return [
+        t("Leather armour", "#A06540", "#FF8A00", 12, 40, 35),
+        t("Leather armour (enchanted)", "#935678", "#FF8A00", 24, 25, 30),
+        t("Chainmail armour", "#A3A3A3", "#FFFFFF", 90, 0, 55, enabled=False),
+        t("Chainmail armour (enchanted)", "#957BB3", "#FFFFFF", 24, 20, 45),
+        t("Iron armour", "#D8D8D8", "#E0E0E0", 90, 0, 75, enabled=False),
+        t("Iron armour (enchanted)", "#B59BD4", "#E0E0E0", 24, 18, 60),
+        t("Gold armour", "#FCDB4A", "#FFE600", 14, 50, 60),
+        t("Gold armour (enchanted)", "#CB9D7E", "#FFE600", 24, 25, 50),
+        t("Diamond armour", "#33EBCB", "#00E5FF", 12, 45, 55),
+        t("Diamond armour (enchanted)", "#52A7CB", "#00E5FF", 24, 30, 45),
+        t("Netherite armour", "#4D494D", "#FF3DFF", 90, 0, 15, enabled=False),
+        t("Netherite armour (enchanted)", "#614580", "#FF3DFF", 24, 25, 25),
+    ]
+
+
+def add_armour_targets(profile):
+    """Add the armour targets that the profile does not have yet (matched by name). Returns the added ones."""
+    have = {x.name.lower() for x in profile.targets}
+    added = [x for x in minecraft_armour_targets() if x.name.lower() not in have]
+    profile.targets.extend(added)
+    return added
+
+
 def default_config():
     cfg = AppConfig(profiles=default_profiles())
     cfg.active_profile = STARTER_PROFILE

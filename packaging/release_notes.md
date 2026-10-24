@@ -22,6 +22,13 @@ Requirements: Windows 10 (version 2004 or newer) or Windows 11, 64-bit. Nothing 
 
 Every setting has a tooltip, and the **Help** page explains everything with pictures.
 
+## What's new in 1.6.1
+
+- **Add Minecraft armour targets** (Targets page, or `mct target add-armour`): leather, chainmail, iron, gold,
+  diamond and netherite armour, each plain and enchanted, added to the current profile when you press it.
+  Colours are approximate; re-pick them in your game if they miss. Grey armour starts switched off because
+  it also matches stone. New profiles still start empty.
+
 ## What's new in 1.6.0
 
 - **Update check**: MineColorTrack looks for a newer release when it opens and shows **Update now** on the Home

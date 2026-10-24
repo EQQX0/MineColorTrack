@@ -55,6 +55,10 @@ TIPS = {
     "target_list": ("", "Targets in this profile. Select one to edit it."),
     "target_add": ("", "Add a new target to this profile and pick its colour from the game straight away.\n"
                      "It switches on once its colour is picked."),
+    "target_add_armour": ("", "Adds Minecraft armour colours to this profile: leather, chainmail, iron, gold, "
+                              "diamond and netherite,\neach plain and enchanted. Approximate colours; re-pick them "
+                              "in your game if they miss.\nGrey ones (plain chainmail, iron, netherite) start switched "
+                              "off because they also match stone."),
     "target_copy": ("", "Make a copy of the selected target, for example to track the same mob at night."),
     "target_remove": ("", "Delete the selected target from this profile."),
     "pick": ("", "Freezes the current picture. Click on the thing you want outlined:\n"
@@ -242,6 +246,9 @@ are filled in.</li>
 <li><b>Colour</b>: the colour searched for. Click it to choose by hand.</li>
 <li><b>Ranges</b>: how close a pixel must be to that colour. See “Tuning a colour” below.</li>
 <li><b>Size limits</b>: ignore matches that are too small (specks) or too big (a whole field).</li>
+<li><b>Add Minecraft armour targets</b> (under the list) adds leather, chainmail, iron, gold, diamond and netherite
+armour, each plain and enchanted, with approximate colours. Grey armour starts switched off because it also
+matches stone; enchanted armour has a wider range because of its moving purple shimmer.</li>
 <li><b>Live preview</b>: white shows what will be outlined. It works while assist is running.</li>
 </ol>
 """),
