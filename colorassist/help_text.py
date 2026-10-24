@@ -108,6 +108,55 @@ TIPS = {
     "hotkeys.toggle_outline": ("Outline on/off", "Shows or hides outlines without stopping."),
     "hotkeys_apply": ("", "Activate the hotkeys typed above. The line below lists any that could not be used,\n"
                           "for example because another program already uses them."),
+    # Entities (AI)
+    "detection.enabled": ("Find entities with an AI model", "Outline entities your own AI model recognises, such "
+                                                            "as pigs, villagers or players.\nWorks together with "
+                                                            "the colour targets."),
+    "load_model": ("", "Choose the .onnx model file you trained with the Google Colab notebook."),
+    "clear_model": ("", "Stop using this model in this profile."),
+    "model_file": ("Model", "The AI model used by this profile. Make one with the labelling tool and Google Colab."),
+    "detection.confidence": ("Confidence", "How sure the model must be before something is outlined.\n"
+                                           "Higher = fewer mistakes but more misses. Lower = finds more, including "
+                                           "wrong things.\n40 to 60% is a good start."),
+    "ai.prefer_gpu": ("Use the graphics card when possible", "Runs the model on your graphics card, which is much "
+                                                              "faster.\nTurn off if you see errors or crashes; it "
+                                                              "then runs on the processor."),
+    "entity_switch": ("", "Outline this entity. Turned-off entities are ignored."),
+    "entity_colour": ("", "Outline colour for this entity."),
+    "open_labeler": ("", "Open the labelling tool: collect screenshots and draw boxes around entities\nto teach "
+                         "your own model."),
+    "open_colab": ("", "Open Google Colab in your browser, where the training notebook runs for free."),
+    "save_notebook": ("", "Save a copy of the training notebook (.ipynb) to upload to Google Colab."),
+    "dataset_dir": ("Dataset folder", "Where your labelled screenshots are stored."),
+    "change_dataset": ("", "Use a different folder for labelled screenshots."),
+    "hotkeys.save_screenshot": ("Save screenshot for labelling", "Saves what you are watching into your dataset "
+                                                                 "while you play,\nso you can label it later in "
+                                                                 "the labelling tool."),
+    # Labelling tool
+    "lab.capture": ("", "Save what you are watching right now as a new screenshot to label.\n"
+                        "While playing, use the Save screenshot hotkey instead."),
+    "lab.import": ("", "Add pictures to label, or merge an already labelled dataset\n(YOLO format, for example "
+                       "a Roboflow \u201cYOLOv8\u201d export)."),
+    "lab.export": ("", "Make the zip to upload to the Google Colab training notebook.\nOnly labelled screenshots "
+                       "are included."),
+    "lab.colab": ("", "Open Google Colab in your browser."),
+    "lab.folder": ("", "Open the dataset folder, or switch to a different one."),
+    "lab.images": ("", "Your screenshots. \u2713 = labelled, \u25CB = nothing in it (background), "
+                       "\u2022 = not labelled yet."),
+    "lab.delete_image": ("", "Delete the selected screenshot and its boxes."),
+    "lab.canvas": ("", "Drag to draw a box. Click a box to select it; Delete or right-click removes it.\n"
+                       "Keys 1 to 9 choose the class or change the selected box."),
+    "lab.background": ("", "This screenshot has none of your classes in it. Teaches the model what is NOT a "
+                           "target,\nfor example blocks that look like armour. Shortcut: B."),
+    "lab.clear": ("", "Remove all boxes from this screenshot and mark it as not labelled."),
+    "lab.prev": ("", "Previous screenshot (Left arrow)."),
+    "lab.next": ("", "Next screenshot (Right arrow)."),
+    "lab.classes": ("", "The kinds of things you label. Click one to use it for new boxes,\n"
+                        "or to change the selected box. Keys 1 to 9 do the same."),
+    "lab.add_class": ("", "Add a class, for example pig, villager or player."),
+    "lab.rename_class": ("", "Rename the selected class."),
+    "lab.delete_class": ("", "Delete the selected class and every box of it."),
+    "lab.advice": ("", "What your dataset still needs for a reliable model."),
     # Settings
     "display.theme": ("Theme", "Colours of this window. High contrast uses black, white and yellow\n"
                                "for the easiest reading."),
@@ -124,6 +173,7 @@ NAV_TIPS = {
     "Home": "Start and stop, choose a profile, switch outlines and targets on or off.",
     "Watch": "Choose which window, monitor or screen area to watch.",
     "Targets": "The colours to look for, and the colour picker.",
+    "Entities": "Find things by their shape with your own AI model, and the labelling tool to make one.",
     "Outline": "How the outlines look.",
     "Tracking": "How steady the outlines are and how pieces are joined.",
     "Hotkeys": "Keyboard shortcuts that work while you play.",
@@ -187,6 +237,49 @@ Use the live preview on the Targets page and adjust until only your target is wh
 <li>Lighting changes colours. Night, caves and rain often need their own copy of a target or profile.</li>
 </ul>
 """),
+    ("entities", "Finding entities with AI", "help_entities.png", """
+<p>Colours cannot tell a creeper from grass of the same green. An AI model can: it learns what a pig, a villager
+or a player looks like from screenshots you label yourself. Nothing is built in; you make your own model.</p>
+<ol>
+<li><b>Collect screenshots</b>: press the <b>Save screenshot for labelling</b> hotkey (Ctrl+Alt+S) while you play,
+or <b>Capture screenshot</b> in the labelling tool.</li>
+<li><b>Label them</b> in the labelling tool (see below).</li>
+<li><b>Export for training</b>: makes a zip and a copy of the training notebook.</li>
+<li><b>Train in Google Colab</b> (free): open colab.research.google.com, File &gt; Upload notebook, choose the
+notebook, set Runtime &gt; Change runtime type &gt; T4 GPU, then Runtime &gt; Run all and upload the zip when asked.
+It takes about 10 to 30 minutes and downloads <i>minecolortrack_model.onnx</i>.</li>
+<li><b>Load the model</b> on the Entities page, switch on the entities you want and press Start.</li>
+</ol>
+<p>On the Entities page (picture): <b>1</b> switches AI detection on or off, <b>2</b> loads your model file,
+<b>3</b> is the confidence, <b>4</b> lists the entities your model knows (switch each on or off and choose its outline
+colour), <b>5</b> opens the labelling tool, Google Colab and the training notebook.</p>
+<p>The <b>Confidence</b> slider decides how sure the model must be. Colour targets and AI entities can be used at the
+same time. Training uses Ultralytics YOLO (AGPL-3.0 licence).</p>
+"""),
+    ("labelling", "Labelling screenshots", "help_labeling.png", """
+<ol>
+<li><b>Capture / Import</b>: add screenshots, or merge a labelled dataset you downloaded (YOLO format).</li>
+<li><b>Screenshots</b>: \u2713 labelled, \u25CB nothing in it, \u2022 not labelled yet.</li>
+<li><b>Picture</b>: drag a box tightly around every target. Click a box to select it; Delete or right-click
+removes it. Left/Right arrows move between screenshots.</li>
+<li><b>Classes</b>: the kinds of things you label. Keys 1 to 9 pick a class or change the selected box.</li>
+<li><b>Tips</b>: what your dataset still needs.</li>
+<li><b>Export for training</b>: the zip for Google Colab.</li>
+</ol>
+<p><b>For a reliable model</b>:</p>
+<ul>
+<li>Label <b>every</b> visible target in a screenshot; an unboxed target teaches the model to ignore it.</li>
+<li>Aim for 100 or more boxes per class, from different distances, angles, biomes, times of day and weather.</li>
+<li><b>Players</b>: use one class (for example \u201cplayer\u201d) for all of them and include every look: no armour,
+leather, chainmail, iron, gold, diamond and netherite armour, different skins, holding items, sneaking, far away
+and close up. Then the model learns that an armoured player is a player, not a block.</li>
+<li>Save plenty of <b>background</b> screenshots (button \u201cNothing here\u201d or key B) showing blocks, ores,
+item frames and builds that look like your targets but are not. This is what stops the model mistaking blocks
+for players or mobs. About one in ten screenshots is a good share.</li>
+<li>Labelling on your own Remote Play or capture picture works better than clean screenshots, because the model
+learns the stream's blur and colours.</li>
+</ul>
+"""),
     ("outline", "Outline styles", "help_outline.png", """
 <p>Style can be a full <b>box</b>, <b>corner brackets</b> or an <b>ellipse</b>. Thickness, the space around the
 target, an arrow or dot marker above it, the target's name, and blinking are all on the Outline page.
@@ -207,7 +300,8 @@ for example on a second monitor. Keep the game itself visible somewhere (not min
 <ul>
 <li><b>Profiles</b> (Home, Manage profiles): make a new empty profile, duplicate one before experimenting,
 rename or delete it. The profile in use is remembered.</li>
-<li><b>Hotkeys</b> work anywhere, also while the game is active: Start / stop, Next profile, Outline on/off.
+<li><b>Hotkeys</b> work anywhere, also while the game is active: Start / stop, Next profile, Outline on/off,
+Save screenshot for labelling.
 Type a combination such as Ctrl+Alt+O and press Apply hotkeys.</li>
 <li><b>Tracking</b>: Smoothing makes outlines steadier; Join pieces makes one outline per mob; Speck filter
 removes single-pixel noise.</li>

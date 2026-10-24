@@ -8,7 +8,8 @@ a = Analysis(
     [os.path.join(root, "run.py")],
     pathex=[root],
     datas=[(os.path.join(root, "colorassist", "assets"), os.path.join("colorassist", "assets"))],
-    excludes=["tkinter", "PIL", "pytest", "matplotlib", "IPython"],
+    excludes=["tkinter", "PIL", "pytest", "matplotlib", "IPython", "onnx", "torch", "torchvision", "ultralytics",
+              "scipy", "pandas", "polars", "sympy"],
     noarchive=False,
 )
 pyz = PYZ(a.pure)

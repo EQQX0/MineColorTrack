@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller pytest pillow
+          pip install -r requirements.txt pyinstaller pytest pillow onnx
 
       - name: Unit tests
         run: python -m pytest -q tests
@@ -41,8 +41,10 @@ jobs:
       - name: Self-test the built app on Windows
         shell: pwsh
         run: |
+          python tests/fake_model.py fake_model.onnx
+          $model = Join-Path $pwd 'fake_model.onnx'
           $report = Join-Path $pwd 'selftest.json'
-          $p = Start-Process -FilePath 'dist\MineColorTrack\MineColorTrack.exe' -ArgumentList '--selftest', "`"$report`"" -Wait -PassThru
+          $p = Start-Process -FilePath 'dist\MineColorTrack\MineColorTrack.exe' -ArgumentList '--selftest', "`"$report`"", '--selftest-model', "`"$model`"" -Wait -PassThru
           if (Test-Path $report) { Get-Content $report } else { throw 'Self-test wrote no report' }
           if ($p.ExitCode -ne 0) { throw "Self-test failed with exit code $($p.ExitCode)" }
 
@@ -64,7 +66,8 @@ jobs:
           if (!(Test-Path $exe)) { throw "Not installed: $exe" }
           if (!(Test-Path $lnk)) { throw "No desktop shortcut: $lnk" }
           $report = Join-Path $pwd 'installed-selftest.json'
-          $q = Start-Process -FilePath $exe -ArgumentList '--selftest', "`"$report`"" -Wait -PassThru
+          $model = Join-Path $pwd 'fake_model.onnx'
+          $q = Start-Process -FilePath $exe -ArgumentList '--selftest', "`"$report`"", '--selftest-model', "`"$model`"" -Wait -PassThru
           Get-Content $report
           if ($q.ExitCode -ne 0) { throw "Installed app self-test failed" }
           "Installed OK: $exe"

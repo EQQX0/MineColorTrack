@@ -46,6 +46,29 @@ Duplicate) works better than one compromise.
 
 ![Overlay with outlines](docs/overlay_outline.png)
 
+## Finding entities with AI (pigs, villagers, players...)
+
+Colours cannot tell a creeper from grass. An AI model can, and you make your own:
+
+1. **Collect screenshots** while you play with the hotkey **Ctrl+Alt+S** (or **Capture screenshot** in the
+   labelling tool: Entities > Open labelling tool).
+2. **Label them**: add classes such as `pig`, `villager`, `player`, and drag a box around every one you see.
+   Mark screenshots with none of them as **Nothing here** (background): this is what stops blocks being
+   mistaken for players or mobs. For players, use one class and include every look: no armour, each armour type
+   (leather, chainmail, iron, gold, diamond, netherite), different skins, near and far.
+3. **Export for training**: a zip plus the training notebook.
+4. **Train in Google Colab** (free GPU): open colab.research.google.com, File > Upload notebook
+   (`train_minecolortrack.ipynb`), Runtime > Change runtime type > T4 GPU, Runtime > Run all, upload the zip.
+   About 10 to 30 minutes later the browser downloads `minecolortrack_model.onnx`.
+5. **Entities > Load model**, switch on the entities you want, press Start.
+
+Labelled datasets from elsewhere (YOLO format, for example a Roboflow "YOLOv8" export) can be merged with
+Import in the labelling tool. Nothing AI-related is built in: no model ships with MineColorTrack.
+
+The app runs models with ONNX Runtime (DirectML, so most graphics cards work). The Colab notebook trains with
+[Ultralytics YOLO](https://docs.ultralytics.com), which is AGPL-3.0; Ultralytics considers models trained with
+it to fall under that licence too. That is fine for personal use; check the licence before sharing models.
+
 ## What you can set
 
 | Page | Options |
@@ -53,9 +76,10 @@ Duplicate) works better than one compromise.
 | Home | Start/stop, profile, outline switch, a switch per target, what is being watched, overlay or mirror window, crosshair |
 | Watch | Any open window (picked from a list, followed when it moves; matched by title and program), any monitor, or a dragged screen area; frames per second; processing resolution |
 | Targets | Any number of colours per profile with name, hue tolerance, saturation and brightness range, size limits and outline colour; on-screen colour picker that suggests tolerances; live preview |
+| Entities | AI detection on/off, load your .onnx model, confidence, graphics card or processor, a switch and outline colour per entity, labelling tool, Google Colab, training notebook, dataset folder |
 | Outline | Box, corner brackets or ellipse; thickness; spacing; black backing line; per-target or single colour; arrow or dot marker; names; blinking; dashed "last seen" outline |
 | Tracking | Smoothing, how long a lost target stays marked, joining pieces into one target, speck filter |
-| Hotkeys | Global hotkeys that work while the game has focus (defaults: Ctrl+Alt+A start/stop, Ctrl+Alt+P next profile, Ctrl+Alt+O outline on/off) |
+| Hotkeys | Global hotkeys that work while the game has focus (defaults: Ctrl+Alt+A start/stop, Ctrl+Alt+P next profile, Ctrl+Alt+O outline on/off, Ctrl+Alt+S save screenshot for labelling) |
 | Settings | Dark, light or high-contrast (black and yellow) theme; text size; start on launch; keep running in the system tray |
 | Help | Illustrated explanations of every page, tuning colours, overlay vs. mirror, troubleshooting |
 
@@ -96,7 +120,12 @@ unit tests, PyInstaller (`packaging/MineColorTrack.spec`), a `--selftest` of the
 installer (`packaging/MineColorTrack.iss`), a silent test install that checks the desktop shortcut,
 and finally the GitHub release.
 
-Code map: `colorassist/vision.py` detection and effects (numpy/OpenCV, no GUI), `engine.py` capture
+The AI pipeline is tested end to end with `MCT_E2E=1 python -m pytest tests/test_training_e2e.py -s` (needs
+`ultralytics`): it labels synthetic screenshots, exports the zip, runs the notebook's own code, and checks the
+exported model with the app's detector. `packaging/make_notebook.py` writes the notebook.
+
+Code map: `colorassist/vision.py` colour detection and tracking (numpy/OpenCV, no GUI), `detector.py` AI model
+runtime, `dataset.py` labelled screenshots, import and export, `labeler.py` labelling tool, `engine.py` capture
 thread, `view.py` overlay/mirror drawing, `panel.py` and `ui.py` control panel and themes,
 `winplat.py` Windows API calls (window list, capture exclusion, hotkeys), `help_text.py` all tooltips and
 Help page text, `app.py` wiring, tray, self-test. Help pictures are rendered by

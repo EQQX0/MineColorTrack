@@ -1,19 +1,20 @@
 """Control panel: sidebar navigation, a Home page with the essentials, a page per feature, and Help."""
 import copy
 import os
+import shutil
 
 from PyQt6.QtCore import Qt, QTimer, QUrl, pyqtSignal
 from PyQt6.QtGui import QAction, QColor, QDesktopServices, QPixmap
-from PyQt6.QtWidgets import (QColorDialog, QComboBox, QFormLayout, QHBoxLayout, QInputDialog, QLabel, QLineEdit,
+from PyQt6.QtWidgets import (QColorDialog, QComboBox, QFileDialog, QFormLayout, QHBoxLayout, QInputDialog, QLabel, QLineEdit,
                              QListWidget, QMainWindow, QMenu, QMessageBox, QPushButton, QScrollArea, QSpinBox,
                              QStackedWidget, QToolButton, QVBoxLayout, QWidget)
 
-from . import APP_NAME, __version__, engine, winplat
-from .config import CHOICES, Profile, Target
+from . import APP_NAME, __version__, dataset, detector, engine, winplat
+from .config import CHOICES, Entity, Profile, Target
 from .help_text import HELP, NAV_TIPS, TIPS
-from .ui import ColourButton, SliderField, ToggleSwitch, card, label, swatch
+from .ui import ColourButton, SliderField, ToggleSwitch, card, clear_layout, label, swatch
 
-PAGES = ["Home", "Watch", "Targets", "Outline", "Tracking", "Hotkeys", "Settings", "Help"]
+PAGES = ["Home", "Watch", "Targets", "Entities", "Outline", "Tracking", "Hotkeys", "Settings", "Help"]
 HELP_IMAGES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "help")
 
 
@@ -31,6 +32,7 @@ class Panel(QMainWindow):
     pickColourRequested = pyqtSignal()
     pickRegionRequested = pyqtSignal()
     hotkeysApply = pyqtSignal()
+    labelerRequested = pyqtSignal()
     themeChanged = pyqtSignal()
     quitRequested = pyqtSignal()
     closeToTray = pyqtSignal()
@@ -80,7 +82,9 @@ class Panel(QMainWindow):
         root.addWidget(side)
 
         self.stack = QStackedWidget()
-        for build in (self._page_home, self._page_watch, self._page_targets, self._page_outline,
+        self._model_names = {}         # model path -> class names (read once)
+        for build in (self._page_home, self._page_watch, self._page_targets, self._page_entities,
+                      self._page_outline,
                       self._page_tracking, self._page_hotkeys, self._page_settings, self._page_help):
             self.stack.addWidget(self._scroll(build()))
         root.addWidget(self.stack, 1)
@@ -297,6 +301,19 @@ class Panel(QMainWindow):
         r.addWidget(self.home_outline)
         r.addWidget(label("Boxes and arrows around everything that matches your targets.", "muted"), 1)
         r.addWidget(self._button("Options", "outline_options", lambda: self.go("Outline")))
+        cl.addLayout(r)
+        v.addWidget(c)
+
+        c, cl = card("AI entity detection")
+        r = QHBoxLayout()
+        r.setSpacing(14)
+        self.home_ai = self._bind("switch", lambda: self.cfg.profile.detection, "enabled", R, "detection.enabled",
+                                  after=self._ai_edited)
+        self.home_ai.setMinimumWidth(230)
+        r.addWidget(self.home_ai)
+        self.home_ai_text = label("", "muted")
+        r.addWidget(self.home_ai_text, 1)
+        r.addWidget(self._button("Options", "outline_options", lambda: self.go("Entities")))
         cl.addLayout(r)
         v.addWidget(c)
 
@@ -517,6 +534,184 @@ class Panel(QMainWindow):
                                    self.preview_label]
         return w
 
+    def _page_entities(self):
+        d = lambda: self.cfg.profile.detection
+        R = self._refreshers
+        w, v = self._page("Entities", "Find things by their shape, such as pigs, villagers or players, with an AI "
+                                      "model you train on your own labelled screenshots.", "entities")
+        c, cl = card("AI model")
+        f = self._form(cl)
+        self.ai_switch = self._bind("switch", d, "enabled", R, "detection.enabled", after=self._ai_edited)
+        f.addRow("", self.ai_switch)
+        mrow = QHBoxLayout()
+        self.model_label = label("", wrap=True)
+        mrow.addWidget(self.model_label, 1)
+        self.load_model_btn = self._button("Load model...", "load_model", self.load_model, "primary")
+        mrow.addWidget(self.load_model_btn)
+        mrow.addWidget(self._button("Clear", "clear_model", self.clear_model))
+        self._row(f, "model_file", mrow)
+        self.model_info = label("", "muted")
+        f.addRow("", self.model_info)
+        self.confidence_slider = self._bind("slider", d, "confidence", R, "detection.confidence", lo=5, hi=95,
+                                            suffix=" %")
+        self._row(f, "detection.confidence", self.confidence_slider)
+        f.addRow("", self._bind("switch", lambda: self.cfg.ai, "prefer_gpu", R, "ai.prefer_gpu"))
+        v.addWidget(c)
+
+        c, cl = card("Entities in this model")
+        self.entity_card = c
+        self.entity_rows = QVBoxLayout()
+        self.entity_rows.setSpacing(8)
+        cl.addLayout(self.entity_rows)
+        v.addWidget(c)
+
+        c, cl = card("Make your own model", "1. Collect and label screenshots.  2. Export for training.  "
+                                            "3. Train in Google Colab (free).  4. Load the model above.")
+        brow = QHBoxLayout()
+        brow.addWidget(self._button("Open labelling tool", "open_labeler", self.labelerRequested.emit, "primary"))
+        brow.addWidget(self._button("Open Google Colab", "open_colab", lambda: QDesktopServices.openUrl(
+            QUrl("https://colab.research.google.com/"))))
+        brow.addWidget(self._button("Save training notebook...", "save_notebook", self.save_notebook))
+        brow.addStretch(1)
+        cl.addLayout(brow)
+        drow = QHBoxLayout()
+        self.dataset_label = label("", wrap=True)
+        drow.addWidget(self.dataset_label, 1)
+        drow.addWidget(self._button("Change...", "change_dataset", self.change_dataset))
+        f = self._form(cl)
+        self._row(f, "dataset_dir", drow)
+        v.addWidget(c)
+        v.addStretch(1)
+        self.anchors["entities"] = [self.ai_switch, self.load_model_btn, self.confidence_slider, self.entity_card, c]
+        return w
+
+    # ---------- AI model ----------
+    def dataset_root(self):
+        return self.cfg.ai.dataset_dir or dataset.default_root()
+
+    def model_names(self, path):
+        """Class names of a model file (cached); raises detector.ModelError."""
+        if path not in self._model_names:
+            self._model_names[path] = detector.Detector(path, prefer_gpu=False).names
+        return self._model_names[path]
+
+    def load_model(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Load AI model", os.path.dirname(self.cfg.profile.detection.model_path
+                                                                                  or self.dataset_root()),
+                                              "ONNX models (*.onnx)")
+        if not path:
+            return
+        try:
+            names = self.model_names(path)
+        except Exception as exc:
+            QMessageBox.warning(self, APP_NAME, "This model cannot be used:\n%s" % exc)
+            return
+        det = self.cfg.profile.detection
+        old = {e.name: e for e in det.entities}
+        det.entities = [old.get(n) or Entity(name=n, outline_color=engine.PALETTE[i % len(engine.PALETTE)])
+                        for i, n in enumerate(names)]
+        det.model_path = path
+        det.enabled = True
+        self.refresh_all()
+        self.settingsChanged.emit()
+
+    def clear_model(self):
+        det = self.cfg.profile.detection
+        det.model_path = ""
+        det.enabled = False
+        det.entities = []
+        self.refresh_all()
+        self.settingsChanged.emit()
+
+    def save_notebook(self):
+        src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "train_minecolortrack.ipynb")
+        path, _ = QFileDialog.getSaveFileName(self, "Save training notebook",
+                                              os.path.join(os.path.dirname(self.dataset_root()),
+                                                           "train_minecolortrack.ipynb"), "Notebooks (*.ipynb)")
+        if path:
+            try:
+                shutil.copyfile(src, path)
+            except OSError as exc:
+                QMessageBox.warning(self, APP_NAME, "Could not save: %s" % exc)
+
+    def change_dataset(self):
+        path = QFileDialog.getExistingDirectory(self, "Choose a dataset folder", self.dataset_root())
+        if path:
+            self.cfg.ai.dataset_dir = path
+            self._refresh_ai()
+            self.settingsChanged.emit()
+
+    def set_dataset_dir(self, path):
+        self.cfg.ai.dataset_dir = path
+        self._refresh_ai()
+        self.settingsChanged.emit()
+
+    def _ai_edited(self):
+        self._refresh_ai()
+
+    def _refresh_ai(self, device=None, error=None):
+        det = self.cfg.profile.detection
+        self.dataset_label.setText(self.dataset_root())
+        names, problem = [], None
+        if det.model_path:
+            try:
+                names = self.model_names(det.model_path)
+            except Exception as exc:
+                problem = str(exc)
+        self.model_label.setText(os.path.basename(det.model_path) if det.model_path else "No model loaded")
+        self.model_label.setToolTip(det.model_path or tip("model_file"))
+        if not detector.available():
+            info = "The AI runtime is missing from this installation."
+        elif problem or error:
+            info = "Problem: %s" % (problem or error)
+        elif det.model_path:
+            info = "%d entit%s: %s%s" % (len(names), "y" if len(names) == 1 else "ies", ", ".join(names),
+                                         (" \u00b7 running on the %s" % device) if device else "")
+        else:
+            info = "Load a model you trained, or make one with the labelling tool."
+        self.model_info.setText(info)
+        on = [e.name for e in det.entities if e.enabled]
+        if not det.model_path:
+            self.home_ai_text.setText("No model loaded. Options shows how to make one.")
+        else:
+            self.home_ai_text.setText("%s \u00b7 %d of %d entities on" % (os.path.basename(det.model_path), len(on),
+                                                                         len(det.entities)))
+        self._rebuild_entity_rows()
+
+    def _rebuild_entity_rows(self):
+        lay = self.entity_rows
+        clear_layout(lay)
+        det = self.cfg.profile.detection
+        if not det.entities:
+            lay.addWidget(label("Entities appear here when a model is loaded.", "muted"))
+            return
+        for e in det.entities:
+            r = QHBoxLayout()
+            sw = ToggleSwitch(e.name)
+            sw.setToolTip(tip("entity_switch"))
+            sw.setChecked(e.enabled)
+            sw.toggled.connect(lambda val, ent=e: self._entity_toggled(ent, val))
+            r.addWidget(sw, 1)
+            cb = ColourButton()
+            cb.setToolTip(tip("entity_colour"))
+            cb.setMaximumWidth(160)
+            cb.set_colour(e.outline_color)
+            cb.clicked.connect(lambda _=False, ent=e, btn=cb: self._entity_colour(ent, btn))
+            r.addWidget(cb)
+            lay.addLayout(r)
+
+    def _entity_toggled(self, ent, value):
+        ent.enabled = bool(value)
+        self._refresh_ai()
+        self.settingsChanged.emit()
+
+    def _entity_colour(self, ent, btn):
+        c = QColorDialog.getColor(QColor(ent.outline_color), self, "Outline colour for %s" % ent.name)
+        if c.isValid():
+            ent.outline_color = c.name().upper()
+            btn.set_colour(ent.outline_color)
+            self.settingsChanged.emit()
+
     def _page_outline(self):
         o = lambda: self.cfg.profile.outline
         R = self._refreshers
@@ -567,7 +762,7 @@ class Panel(QMainWindow):
                                      "Examples: Ctrl+Alt+O, Shift+F7, Ctrl+Num5. Leave empty to disable.", "profiles")
         c, cl = card()
         f = self._form(cl)
-        for attr in ("toggle_overlay", "next_profile", "toggle_outline"):
+        for attr in ("toggle_overlay", "next_profile", "toggle_outline", "save_screenshot"):
             self._row(f, "hotkeys." + attr, self._bind("text", k, attr, R, "hotkeys." + attr))
         f.addRow("", self._button("Apply hotkeys", "hotkeys_apply", self.hotkeysApply.emit, "primary"))
         self.hotkey_status = label("", "muted")
@@ -632,6 +827,7 @@ class Panel(QMainWindow):
             r()
         self._reload_targets()
         self._update_watch_rows()
+        self._refresh_ai()
 
     def restyle(self):
         """Theme changed: re-colour widgets that carry inline styles."""
@@ -645,16 +841,7 @@ class Panel(QMainWindow):
     # ---------- home target switches ----------
     def _rebuild_home_targets(self):
         lay = self.home_targets
-        while lay.count():
-            item = lay.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-            elif item.layout():
-                inner = item.layout()
-                while inner.count():
-                    it = inner.takeAt(0)
-                    if it.widget():
-                        it.widget().deleteLater()
+        clear_layout(lay)
         targets = self.cfg.profile.targets
         if not targets:
             lay.addWidget(label("No targets yet. Add one and pick its colour from the game.", "muted"))
@@ -878,7 +1065,9 @@ class Panel(QMainWindow):
         self.side_saved.setText(text)
 
     def show_result(self, res):
-        if not any(t.enabled for t in self.cfg.profile.targets):
+        det = self.cfg.profile.detection
+        ai_on = det.enabled and det.model_path and any(e.enabled for e in det.entities)
+        if not any(t.enabled for t in self.cfg.profile.targets) and not ai_on:
             self.status_title.setText("Running · no targets yet")
             self.status.setText("This profile has no switched-on targets. Go to Targets, press Add and click on "
                                 "the thing you want outlined.")
@@ -886,6 +1075,9 @@ class Panel(QMainWindow):
             self.status_title.setText("Running · %d target%s in view" % (res.count, "" if res.count == 1 else "s"))
             self.status.setText("%.0f fps · %s · profile “%s”"
                                 % (res.fps, self.watch_text(), self.cfg.active_profile))
+        if (res.ai_device, res.ai_error) != getattr(self, "_ai_state", (None, None)):
+            self._ai_state = (res.ai_device, res.ai_error)
+            self._refresh_ai(res.ai_device, res.ai_error)
         if res.preview_img is not None:
             pm = QPixmap.fromImage(res.preview_img)
             lw = max(100, self.preview_label.width() - 16)

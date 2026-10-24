@@ -273,3 +273,16 @@ def swatch(hexcol, size=18):
     lb.setStyleSheet("background: %s; border: 1px solid %s; border-radius: %dpx;"
                      % (hexcol, CURRENT["border"], size // 4))
     return lb
+
+
+def clear_layout(lay):
+    """Remove and destroy everything in a layout right away (deleteLater alone leaves widgets visible until later)."""
+    while lay.count():
+        item = lay.takeAt(0)
+        w = item.widget()
+        if w is not None:
+            w.hide()
+            w.setParent(None)
+            w.deleteLater()
+        elif item.layout() is not None:
+            clear_layout(item.layout())

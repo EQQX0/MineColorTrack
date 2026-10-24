@@ -1,4 +1,4 @@
-"""Background worker: capture -> detect -> track -> effects, handed to the GUI as a Result."""
+"""Background worker: capture -> colour and AI detection -> tracking, handed to the GUI as a Result."""
 import threading
 import time
 
@@ -8,9 +8,11 @@ import numpy as np
 from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtGui import QImage
 
-from . import vision, winplat
+from . import detector, vision, winplat
 
 _MSS = getattr(mss, "MSS", None) or mss.mss   # mss 10 renamed the factory
+ENTITY_BASE = 1000                              # tracker ids at or above this are AI entities, below are colour targets
+PALETTE = ["#FFE600", "#00E5FF", "#FF3DFF", "#FF8A00", "#7CFF4F", "#FF4F6E", "#9D7CFF", "#FFFFFF"]
 
 
 def to_qimage(bgr):
@@ -26,7 +28,8 @@ def to_qimage(bgr):
 
 class Result:
     """One processed frame. Coordinates are in captured-frame pixels."""
-    __slots__ = ("rect", "frame_size", "tracks", "frame_img", "preview_img", "fps", "count")
+    __slots__ = ("rect", "frame_size", "tracks", "frame_img", "preview_img", "fps", "count", "ai_device",
+                 "ai_error")
 
     def __init__(self):
         self.rect = None
@@ -35,6 +38,8 @@ class Result:
         self.frame_img = self.preview_img = None
         self.fps = 0.0
         self.count = 0
+        self.ai_device = None       # "GPU"/"CPU" while a model runs
+        self.ai_error = None
 
 
 def clamp_rect(rect, bounds):
@@ -59,6 +64,9 @@ class Engine(QObject):
         self.last_frame = None          # latest raw BGR frame, for the colour picker
         self.last_rect = None
         self._tracker = vision.Tracker()
+        self._detector = None
+        self._detector_key = None
+        self._detector_error = None
         self._thread = None
         self._stop = threading.Event()
 
@@ -139,19 +147,52 @@ class Engine(QObject):
             budget = 1.0 / max(1, self.cfg.capture.fps)
             self._stop.wait(max(0.0, budget - (time.perf_counter() - t0)))
 
+    def _get_detector(self, path, prefer_gpu):
+        key = (path, prefer_gpu)
+        if key != self._detector_key:
+            self._detector_key = key
+            self._detector, self._detector_error = None, None
+            try:
+                self._detector = detector.Detector(path, prefer_gpu)
+            except Exception as exc:          # bad file, missing runtime, unsupported model...
+                self._detector_error = str(exc)
+        return self._detector
+
     def process(self, frame, rect):
         prof = self.cfg.profile
         targets = list(prof.targets)
         scale = self.cfg.capture.scale / 100.0
         blobs, small, _ = vision.detect(frame, targets, prof.tracking, scale)
-        tracks = self._tracker.update(blobs, prof.tracking.smoothing, prof.tracking.hold_frames)
 
         res = Result()
+        det_cfg = prof.detection
+        names, entities = [], {}
+        if det_cfg.enabled and det_cfg.model_path:
+            det = self._get_detector(det_cfg.model_path, self.cfg.ai.prefer_gpu)
+            res.ai_error = self._detector_error
+            if det is not None:
+                res.ai_device = det.device
+                names = det.names
+                entities = {e.name: e for e in det_cfg.entities}
+                allowed = {i for i, n in enumerate(names) if n not in entities or entities[n].enabled}
+                if allowed:
+                    for d in det.detect(frame, conf=max(1, det_cfg.confidence) / 100.0, allowed=allowed):
+                        blobs.append(vision.Blob(ENTITY_BASE + d.cls, d.x, d.y, d.w, d.h, int(d.w * d.h)))
+        tracks = self._tracker.update(blobs, prof.tracking.smoothing, prof.tracking.hold_frames)
+
         res.rect = rect
         h, w = frame.shape[:2]
         res.frame_size = (w, h)
         res.fps = getattr(self, "_fps", 0.0)
         for t in tracks:
+            if t.target >= ENTITY_BASE:
+                cls = t.target - ENTITY_BASE
+                if cls >= len(names):
+                    continue
+                ent = entities.get(names[cls])
+                colour = ent.outline_color if ent else PALETTE[cls % len(PALETTE)]
+                res.tracks.append((*t.box.tolist(), t.missed > 0, names[cls], colour))
+                continue
             if t.target >= len(targets):
                 continue
             tg = targets[t.target]

@@ -12,12 +12,12 @@ from PyQt6.QtCore import QAbstractNativeEventFilter, QTimer
 from PyQt6.QtGui import QAction, QColor, QIcon
 from PyQt6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
 
-from . import APP_NAME, __version__, config, engine, ui, vision, winplat
+from . import APP_NAME, __version__, config, dataset, detector, engine, ui, vision, winplat
 from .panel import PAGES, Panel
 from .pickers import ColourPicker, RegionPicker
 from .view import AssistView
 
-HOTKEY_ACTIONS = ["toggle_overlay", "next_profile", "toggle_outline"]
+HOTKEY_ACTIONS = ["toggle_overlay", "next_profile", "toggle_outline", "save_screenshot"]
 ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
 
@@ -73,6 +73,8 @@ class Controller:
         p.pickColourRequested.connect(self.pick_colour)
         p.pickRegionRequested.connect(self.pick_region)
         p.hotkeysApply.connect(self.register_hotkeys)
+        p.labelerRequested.connect(self.open_labeler)
+        self.labeler = None
         p.themeChanged.connect(self.apply_theme)
         p.quitRequested.connect(self.quit)
         p.closeToTray.connect(self._closed_to_tray)
@@ -267,6 +269,46 @@ class Controller:
         self._region_picker = picker
         picker.open()
 
+    # ---------- labelling ----------
+    def grab_for_labelling(self):
+        """(frame, message): the latest watched picture, or a fresh grab if not running."""
+        if self.engine.running and self.engine.last_frame is not None:
+            return self.engine.last_frame.copy(), None
+        frame, _, msg = engine.grab_once(self.cfg)
+        return frame, msg
+
+    def save_screenshot(self):
+        frame, msg = self.grab_for_labelling()
+        if frame is None:
+            if self.tray:
+                self.tray.showMessage(APP_NAME, msg or "Nothing to capture.", QSystemTrayIcon.MessageIcon.Warning, 3000)
+            return
+        try:
+            ds = dataset.Dataset(self.panel.dataset_root())
+            stem = ds.add_image(frame)
+        except OSError as exc:
+            if self.tray:
+                self.tray.showMessage(APP_NAME, "Could not save: %s" % exc, QSystemTrayIcon.MessageIcon.Warning, 3000)
+            return
+        if self.labeler is not None and self.labeler.isVisible():
+            self.labeler.add_captured(stem)
+        if self.tray:
+            self.tray.showMessage(APP_NAME, "Screenshot saved for labelling (%d in total)." % len(ds.images()),
+                                  QSystemTrayIcon.MessageIcon.NoIcon, 1500)
+
+    def open_labeler(self):
+        from .labeler import Labeler
+        root = self.panel.dataset_root()
+        if self.labeler is None or self.labeler.ds.root != root:
+            if self.labeler is not None:
+                self.labeler.close()
+            self.labeler = Labeler(root, self.grab_for_labelling)
+            self.labeler.setWindowIcon(app_icon())
+            self.labeler.datasetChanged.connect(self.panel.set_dataset_dir)
+        self.labeler.show()
+        self.labeler.raise_()
+        self.labeler.activateWindow()
+
     # ---------- hotkeys ----------
     def register_hotkeys(self):
         hwnd = int(self.panel.winId())
@@ -296,6 +338,9 @@ class Controller:
         prof = self.cfg.profile
         if action == "toggle_overlay":
             self.toggle()
+            return
+        if action == "save_screenshot":
+            self.save_screenshot()
             return
         if action == "next_profile":
             names = list(self.cfg.profiles)
@@ -358,7 +403,7 @@ def _install_error_log(cfg_path):
     sys.excepthook = hook
 
 
-def run_selftest(out_path):
+def run_selftest(out_path, model_path=None):
     """Non-interactive checks of a built app, used by the release pipeline on a real Windows machine."""
     report = {"app": APP_NAME, "version": __version__, "platform": sys.platform, "checks": {}}
     ok = [True]
@@ -419,6 +464,34 @@ def run_selftest(out_path):
     check("window_list", lambda: ["%s | %s" % (w["title"][:40], w["exe"]) for w in winplat.list_windows()][:8], False)
     check("window_search", lambda: str(winplat.find_window("no-such-window-%d" % os.getpid())), False)
     check("config_save", lambda: (config.save(cfg, path), os.path.getsize(path))[1], True)
+
+    def ai_check():
+        info = {"runtime": detector.available()}
+        if detector.ort is not None:
+            info["providers"] = detector.ort.get_available_providers()
+        if model_path:
+            frame = np.full((480, 640, 3), 120, np.uint8)
+            for gpu in (True, False):
+                det = detector.Detector(model_path, prefer_gpu=gpu)
+                found = det.detect(frame, conf=0.3)
+                info["gpu" if gpu else "cpu"] = {"device": det.device, "classes": det.names, "detections": len(found)}
+        return info
+    check("ai_model", ai_check, bool(model_path))
+
+    def labeler_check():
+        from .labeler import Labeler
+        root = os.path.join(tempfile.mkdtemp(), "dataset")
+        lab = Labeler(root, lambda: (np.full((360, 640, 3), 90, np.uint8), None))
+        lab.ds.add_class("player")
+        lab.capture()
+        lab.ds.save_boxes(lab.current, [(0, 0.5, 0.5, 0.2, 0.4)])
+        lab.capture()
+        lab.mark_background()
+        zpath = os.path.join(os.path.dirname(root), "export.zip")
+        info = lab.ds.export_zip(zpath)
+        lab.close()
+        return info
+    check("labelling_tool", labeler_check, True)
     report["ok"] = ok[0]
     with open(out_path, "w", encoding="utf-8") as fh:
         json.dump(report, fh, indent=2, default=str)
@@ -432,10 +505,11 @@ def main(argv=None):
     ap.add_argument("--config", default=config.default_path(), help="settings file (JSON)")
     ap.add_argument("--reset", action="store_true", help="ignore the saved settings and start from defaults")
     ap.add_argument("--selftest", metavar="REPORT.json", help="run non-interactive checks and exit")
+    ap.add_argument("--selftest-model", metavar="MODEL.onnx", help="also load and run this AI model in the self-test")
     args = ap.parse_args(argv)
     winplat.set_app_id("EQQX0.%s" % APP_NAME)
     if args.selftest:
-        return run_selftest(args.selftest)
+        return run_selftest(args.selftest, args.selftest_model)
     winplat.hold_running_mutex()
     app = QApplication(sys.argv[:1])
     app.setApplicationName(APP_NAME)

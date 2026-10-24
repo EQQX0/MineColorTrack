@@ -44,10 +44,26 @@ class TrackingCfg:
 
 
 @dataclass
+class Entity:
+    name: str = ""
+    enabled: bool = True
+    outline_color: str = "#FFE600"
+
+
+@dataclass
+class DetectionCfg:
+    enabled: bool = False
+    model_path: str = ""        # .onnx file made with the Colab notebook
+    confidence: int = 45        # percent; lower finds more but makes more mistakes
+    entities: list = field(default_factory=list)
+
+
+@dataclass
 class Profile:
     targets: list = field(default_factory=list)
     outline: OutlineCfg = field(default_factory=OutlineCfg)
     tracking: TrackingCfg = field(default_factory=TrackingCfg)
+    detection: DetectionCfg = field(default_factory=DetectionCfg)
 
 
 @dataclass
@@ -78,6 +94,13 @@ class HotkeysCfg:
     toggle_overlay: str = "Ctrl+Alt+A"
     next_profile: str = "Ctrl+Alt+P"
     toggle_outline: str = "Ctrl+Alt+O"
+    save_screenshot: str = "Ctrl+Alt+S"
+
+
+@dataclass
+class AICfg:
+    dataset_dir: str = ""       # "" = Documents\MineColorTrack dataset
+    prefer_gpu: bool = True
 
 
 @dataclass
@@ -85,6 +108,7 @@ class AppConfig:
     capture: CaptureCfg = field(default_factory=CaptureCfg)
     display: DisplayCfg = field(default_factory=DisplayCfg)
     hotkeys: HotkeysCfg = field(default_factory=HotkeysCfg)
+    ai: AICfg = field(default_factory=AICfg)
     active_profile: str = ""
     profiles: dict = field(default_factory=dict)
     version: int = 2            # settings-file format; 1 = MineColorTrack 1.0 to 1.1.x
@@ -176,6 +200,8 @@ def _fill(obj, data):
                 _fill(cur, val)
             elif f.name == "targets":
                 setattr(obj, f.name, [_fill(Target(), t) for t in val if isinstance(t, dict)])
+            elif f.name == "entities":
+                setattr(obj, f.name, [_fill(Entity(), e) for e in val if isinstance(e, dict)])
             elif f.name == "profiles":
                 setattr(obj, f.name, {str(k): _fill(Profile(), v) for k, v in val.items() if isinstance(v, dict)})
             elif (cls, f.name) in CHOICES:

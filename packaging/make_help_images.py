@@ -19,7 +19,9 @@ from PyQt6.QtWidgets import QApplication  # noqa: E402
 from colorassist import config, engine, ui, vision  # noqa: E402
 from colorassist.panel import Panel  # noqa: E402
 from colorassist.view import AssistView  # noqa: E402
-from scene import make_scene  # noqa: E402
+from scene import CREEPERS, make_scene  # noqa: E402
+import fake_model  # noqa: E402  (tests/fake_model.py, needs the onnx package)
+import tempfile  # noqa: E402
 
 OUT = os.path.join(ROOT, "colorassist", "assets", "help")
 YELLOW = QColor("#FFE600")
@@ -221,6 +223,49 @@ def main():
     p.drawImage(QRectF(540, 75, 480, 300), mirror)
     p.end()
     img.save(os.path.join(OUT, "help_display.png"))
+
+    # 7. Entities page with a (stand-in) model that knows pig, villager and player
+    tmp = tempfile.mkdtemp()
+    model = fake_model.build(os.path.join(tmp, "my_minecraft_model.onnx"),
+                             names="{0: 'pig', 1: 'villager', 2: 'player'}")
+    det = cfg.profile.detection
+    det.model_path, det.enabled = model, True
+    det.entities = [config.Entity("pig", True, "#FFE600"), config.Entity("villager", True, "#00E5FF"),
+                    config.Entity("player", True, "#FF3DFF")]
+    cfg.ai.dataset_dir = r"C:\Users\you\Documents\MineColorTrack dataset"
+    panel.refresh_all()
+    panel._refresh_ai("GPU")
+    panel.go("Entities")
+    panel.resize(1100, 1000)
+    settle(app)
+    annotate(panel.grab(), panel, panel.anchors["entities"]).save(os.path.join(OUT, "help_entities.png"))
+    panel.resize(1100, 760)
+
+    # 8. Labelling tool with a few labelled screenshots
+    from colorassist.labeler import Labeler
+    root = os.path.join(tmp, "dataset")
+    lab = Labeler(root, lambda: (None, None))
+    for n in ("creeper", "pig", "player"):
+        lab.ds.add_class(n)
+    H, W = scene.shape[:2]
+    sx, sy = W / 640.0, H / 360.0
+    for i in range(6):
+        stem = lab.ds.add_image(scene)
+        if i == 4:
+            lab.ds.save_boxes(stem, [])
+        elif i < 4:
+            boxes = [(0, (x + w / 2) * sx / W, (y + h / 2) * sy / H, w * sx / W, h * sy / H) for x, y, w, h in CREEPERS]
+            boxes.append((1, (470 + 21) * sx / W, (182 + 9) * sy / H, 46 * sx / W, 20 * sy / H))
+            lab.ds.save_boxes(stem, boxes)
+    lab.resize(1450, 860)
+    lab.show()
+    lab.reload()
+    lab.image_list.setCurrentRow(0)
+    lab.class_list.setCurrentRow(0)
+    lab.canvas.selected = 0
+    settle(app, 8)
+    annotate(lab.grab(), lab, lab.anchors).save(os.path.join(OUT, "help_labeling.png"))
+    lab.close()
 
     panel.close()
     print("help images written to", OUT)

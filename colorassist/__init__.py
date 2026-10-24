@@ -1,3 +1,3 @@
 """MineColorTrack: low-vision colour highlighting for game streams."""
 APP_NAME = "MineColorTrack"
-__version__ = "1.2.0"
+__version__ = "1.3.0"
