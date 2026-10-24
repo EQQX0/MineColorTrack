@@ -19,6 +19,11 @@ To uninstall, use **Start menu > MineColorTrack > Uninstall MineColorTrack**, or
 Installed apps. At the end it asks whether to also delete your settings and profiles; choose No to keep them
 for a later reinstall.
 
+**Updating**: from 1.6.0 on, MineColorTrack checks GitHub for a newer version when it opens and shows
+**Update now** on the Home page (or Settings > Updates > Check for updates now; `mct update install` from a
+terminal). It downloads the installer, closes, updates and reopens itself; settings are kept. Running a newer
+installer by hand also updates in place. The check needs this repository to be public.
+
 Windows SmartScreen may say "Windows protected your PC" because the installer is not code-signed.
 Click **More info**, then **Run anyway**.
 

@@ -22,6 +22,13 @@ Requirements: Windows 10 (version 2004 or newer) or Windows 11, 64-bit. Nothing 
 
 Every setting has a tooltip, and the **Help** page explains everything with pictures.
 
+## What's new in 1.6.0
+
+- **Update check**: MineColorTrack looks for a newer release when it opens and shows **Update now** on the Home
+  page. One click downloads the installer, updates and reopens MineColorTrack; settings are kept.
+  Settings > Updates: turn the check off or check now. "Skip this version" hides one release.
+- `mct update check` and `mct update install` for scripts and agents.
+
 ## What's new in 1.5.0
 
 - **Command line for scripts and AI agents**: `mct.exe` controls everything (settings, profiles, colour targets,

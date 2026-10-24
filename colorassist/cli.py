@@ -46,6 +46,8 @@ Testing settings on a picture
   mct detect IMAGE [--out marked.png]  what the current profile would outline in IMAGE (JSON boxes)
 Running app
   mct start | stop | toggle-outline | screenshot | show | quit   (start launches the app if needed)
+Updates
+  mct update check | mct update install   (install closes the app, runs the new installer, reopens it)
 Labelling dataset (for training your own AI model)
   mct dataset info | classes | add-class NAME | import ZIP_OR_FOLDER | add-image FILE... | export OUT.zip
 
@@ -459,6 +461,32 @@ def cmd_app(b, a):
     return b.action(name)
 
 
+def cmd_update(b, a):
+    from . import updater, winplat
+    try:
+        info = updater.check()
+    except updater.UpdateError as exc:
+        raise CliError(str(exc))
+    if not a.notes:
+        info.pop("notes", None)
+    if a.action == "check":
+        return info
+    if not info["newer"]:
+        return dict(info, installed=False, note="Already the newest version.")
+    if not winplat.IS_WIN:
+        raise CliError("Installing updates is only possible on Windows.")
+    path = updater.download(info["installer"])
+    if b.live:
+        ipc.request(b.path, "action", {"name": "quit"})
+        import time
+        for _ in range(40):
+            time.sleep(0.25)
+            if not ipc.is_running(b.path):
+                break
+    updater.run_installer(path)
+    return dict(info, installed=True, installer=path, note="The installer is running and reopens MineColorTrack.")
+
+
 def cmd_dataset(b, a):
     from .dataset import Dataset, default_root
     cfg = b.load()
@@ -575,6 +603,10 @@ def build_parser():
                        ("show", "bring the control panel to the front"), ("quit", "close the app")):
         sub.add_parser(name, help=text)
 
+    p = sub.add_parser("update", help="check GitHub for a newer version, or download and install it")
+    p.add_argument("action", choices=["check", "install"])
+    p.add_argument("--notes", action="store_true", help="include the release notes")
+
     p = sub.add_parser("dataset", help="labelled screenshots for training")
     p.add_argument("action", choices=["info", "classes", "add-class", "import", "add-image", "export"])
     p.add_argument("args", nargs="*")
@@ -608,6 +640,7 @@ def main(argv=None):
             "status": cmd_status, "get": cmd_get, "set": cmd_set, "reset": cmd_reset, "profile": cmd_profile,
             "target": cmd_target, "model": cmd_model, "entity": cmd_entity, "windows": cmd_windows,
             "monitors": cmd_monitors, "watch": cmd_watch, "detect": cmd_detect, "dataset": cmd_dataset,
+            "update": cmd_update,
         }.get(a.command, cmd_app)
         if a.command == "profile" and a.action != "list" and not a.name:
             raise CliError("profile %s needs a NAME" % a.action)

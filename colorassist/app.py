@@ -12,9 +12,9 @@ import traceback
 import numpy as np
 from PyQt6.QtCore import QAbstractNativeEventFilter, QObject, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QColor, QIcon
-from PyQt6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
+from PyQt6.QtWidgets import QApplication, QMenu, QMessageBox, QProgressDialog, QSystemTrayIcon
 
-from . import APP_NAME, __version__, capture, config, dataset, detector, engine, ipc, ui, vision, winplat
+from . import APP_NAME, __version__, capture, config, dataset, detector, engine, ipc, ui, updater, vision, winplat
 from .panel import PAGES, Panel
 from .pickers import ColourPicker, RegionPicker
 from .view import AssistView
@@ -50,6 +50,15 @@ class _Bridge(QObject):
     call = pyqtSignal(object)
 
 
+class _UpdateBridge(QObject):
+    """Results of the background update check and download, delivered on the GUI thread."""
+    checked = pyqtSignal(object, bool)
+    failed = pyqtSignal(str, bool)
+    progress = pyqtSignal(int, int)
+    downloaded = pyqtSignal(str)
+    download_failed = pyqtSignal(str)
+
+
 class Controller:
     def __init__(self, app, cfg, path, interactive=True, start_now=False):
         self.app, self.cfg, self.path = app, cfg, path
@@ -81,6 +90,15 @@ class Controller:
         p.pickRegionRequested.connect(self.pick_region)
         p.hotkeysApply.connect(self.register_hotkeys)
         p.labelerRequested.connect(self.open_labeler)
+        p.updateRequested.connect(self.update_now)
+        p.updateCheckRequested.connect(lambda: self.check_updates(manual=True))
+        self._upd = _UpdateBridge()
+        self._upd.checked.connect(self._update_checked)
+        self._upd.failed.connect(self._update_failed)
+        self._upd.progress.connect(self._update_progress)
+        self._upd.downloaded.connect(self._update_downloaded)
+        self._upd.download_failed.connect(self._update_download_failed)
+        self._progress = None
         self.labeler = None
         p.themeChanged.connect(self.apply_theme)
         p.quitRequested.connect(self.quit)
@@ -104,6 +122,8 @@ class Controller:
                 self.ipc.start()
             except OSError:
                 self.ipc = None          # another copy owns the connection; the CLI talks to that one
+        if interactive and cfg.updates.check_on_start:
+            QTimer.singleShot(4000, self.check_updates)
         if (cfg.display.start_on_launch or start_now) and interactive:
             QTimer.singleShot(300, self.start)
 
@@ -389,6 +409,86 @@ class Controller:
         except OSError as exc:
             self.panel.set_saved("Could not save: %s" % exc)
 
+    # ---------- updates ----------
+    def check_updates(self, manual=False):
+        if manual:
+            self.panel.show_update_problem("Checking...")
+
+        def work():
+            try:
+                self._upd.checked.emit(updater.check(), manual)
+            except Exception as exc:
+                self._upd.failed.emit(str(exc), manual)
+        threading.Thread(target=work, name="MineColorTrackUpdateCheck", daemon=True).start()
+
+    def _update_checked(self, info, manual):
+        self.panel.show_update(info, manual)
+        if manual and not info.get("newer"):
+            self.panel.set_status("You have the newest version (%s)." % info["current"])
+        elif manual:
+            self.panel.go("Home")
+
+    def _update_failed(self, text, manual):
+        self.panel.show_update_problem(text)
+        if manual:
+            QMessageBox.information(self.panel, APP_NAME, "Could not check for updates.\n\n%s" % text)
+
+    def update_now(self):
+        info = getattr(self.panel, "_update_info", None)
+        if not info or not info.get("newer"):
+            self.check_updates(manual=True)
+            return
+        if not winplat.IS_WIN:
+            QMessageBox.information(self.panel, APP_NAME, "Updating is only possible on Windows.")
+            return
+        if not info.get("installer"):
+            QMessageBox.information(self.panel, APP_NAME, "This release has no installer yet. Opening its page.")
+            self.panel._open_update_notes()
+            return
+        self._progress = QProgressDialog("Downloading MineColorTrack %s..." % info["latest"], "Cancel", 0, 100,
+                                         self.panel)
+        self._progress.setWindowTitle(APP_NAME)
+        self._progress.setMinimumDuration(0)
+        self._progress.setValue(0)
+        self._cancel_download = False
+        self._progress.canceled.connect(lambda: setattr(self, "_cancel_download", True))
+
+        def work():
+            def progress(done, total):
+                if self._cancel_download:
+                    raise updater.UpdateError("Cancelled.")
+                self._upd.progress.emit(done, total)
+            try:
+                self._upd.downloaded.emit(updater.download(info["installer"], progress))
+            except Exception as exc:
+                self._upd.download_failed.emit(str(exc))
+        threading.Thread(target=work, name="MineColorTrackUpdateDownload", daemon=True).start()
+
+    def _update_progress(self, done, total):
+        if self._progress and total:
+            self._progress.setValue(int(done * 100 / total))
+
+    def _update_download_failed(self, text):
+        if self._progress:
+            self._progress.close()
+        if text != "Cancelled.":
+            QMessageBox.warning(self.panel, APP_NAME, "The update could not be downloaded.\n\n%s" % text)
+
+    def _update_downloaded(self, path):
+        if self._progress:
+            self._progress.close()
+        if QMessageBox.question(self.panel, APP_NAME, "The update is ready. MineColorTrack will close, update and "
+                                "open again. Your settings are kept.\n\nInstall now?") \
+                != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            winplat.release_running_mutex()
+            updater.run_installer(path)
+        except Exception as exc:
+            QMessageBox.warning(self.panel, APP_NAME, "Could not start the installer: %s" % exc)
+            return
+        self.quit()
+
     # ---------- command-line control (mct) ----------
     def _command_from_cli(self, cmd, args):
         """Runs on the connection thread: pass the request to the GUI thread and wait for the answer."""
@@ -582,6 +682,7 @@ def run_selftest(out_path, model_path=None):
     check("window_list", lambda: ["%s | %s" % (w["title"][:40], w["exe"]) for w in winplat.list_windows()][:8], False)
     check("window_search", lambda: str(winplat.find_window("no-such-window-%d" % os.getpid())), False)
     check("config_save", lambda: (config.save(cfg, path), os.path.getsize(path))[1], True)
+    check("update_check", lambda: {k: v for k, v in updater.check().items() if k != "notes"}, False)
 
     def ai_check():
         info = {"runtime": detector.available()}

@@ -174,6 +174,14 @@ TIPS = {
     "display.mirror_on_top": ("Keep the mirror window on top", "Keep the mirror window above all other windows."),
     "copy_agent_prompt": ("", "Copies a short explanation of the mct command-line tool, to paste into an AI "
                               "agent\nso it can change MineColorTrack's settings for you."),
+    "updates.check_on_start": ("Check for updates when the program opens", "Looks on GitHub for a newer "
+                                                                          "MineColorTrack each time it opens\n"
+                                                                          "and shows a message on the Home page."),
+    "check_updates": ("", "Look on GitHub for a newer version now."),
+    "update_now": ("", "Download the new installer and update. MineColorTrack closes, updates itself and opens "
+                       "again;\nyour settings and profiles are kept."),
+    "update_notes": ("", "Open the release page with the list of changes."),
+    "update_skip": ("", "Do not mention this version again. You can still update from Settings."),
     "open_folder": ("", "Open the folder that holds your settings file and the error log."),
     "help_button": ("", "Explain this page, with pictures."),
 }
@@ -331,6 +339,9 @@ changes apply live; when it is closed, the settings file is edited.</p>
 <li><b>mct watch window --title Minecraft</b>, <b>mct start</b>, <b>mct stop</b>, <b>mct screenshot</b></li>
 </ul>
 <p>Settings &gt; <b>Copy instructions for an AI agent</b> copies a ready-made explanation to paste into an agent.</p>
+<p><b>Updates</b>: MineColorTrack looks for a newer version on GitHub when it opens (Settings &gt; Updates) and shows
+a message on the Home page. <b>Update now</b> downloads the installer, closes MineColorTrack, updates it and opens
+it again; your settings and profiles are kept. From a terminal: <b>mct update check</b> or <b>mct update install</b>.</p>
 """),
     ("trouble", "Troubleshooting", None, """
 <ul>

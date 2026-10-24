@@ -236,3 +236,11 @@ def hold_running_mutex(name="MineColorTrackRunning"):
         kernel32.CreateMutexW.argtypes = [ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR]
         kernel32.CreateMutexW.restype = wintypes.HANDLE
         _mutex = kernel32.CreateMutexW(None, False, name)
+
+
+def release_running_mutex():
+    """Let the installer run without asking to close us (used just before an update quits the app)."""
+    global _mutex
+    if IS_WIN and _mutex:
+        kernel32.CloseHandle(_mutex)
+        _mutex = None

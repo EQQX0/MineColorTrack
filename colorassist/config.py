@@ -105,11 +105,18 @@ class AICfg:
 
 
 @dataclass
+class UpdateCfg:
+    check_on_start: bool = True
+    skip_version: str = ""      # "Skip this version" remembers it here
+
+
+@dataclass
 class AppConfig:
     capture: CaptureCfg = field(default_factory=CaptureCfg)
     display: DisplayCfg = field(default_factory=DisplayCfg)
     hotkeys: HotkeysCfg = field(default_factory=HotkeysCfg)
     ai: AICfg = field(default_factory=AICfg)
+    updates: UpdateCfg = field(default_factory=UpdateCfg)
     active_profile: str = ""
     profiles: dict = field(default_factory=dict)
     version: int = 2            # settings-file format; 1 = MineColorTrack 1.0 to 1.1.x

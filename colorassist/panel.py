@@ -32,6 +32,8 @@ class Panel(QMainWindow):
     pickColourRequested = pyqtSignal()
     pickRegionRequested = pyqtSignal()
     hotkeysApply = pyqtSignal()
+    updateRequested = pyqtSignal()
+    updateCheckRequested = pyqtSignal()
     labelerRequested = pyqtSignal()
     themeChanged = pyqtSignal()
     quitRequested = pyqtSignal()
@@ -251,6 +253,19 @@ class Panel(QMainWindow):
         R = self._refreshers
         w, v = self._page("Home", "Outlines things of chosen colours on your screen so they are easier to see. "
                                   "MineColorTrack only draws; it never controls the game.", "start")
+        c, cl = card()
+        self.update_card = c
+        self.update_text = label("", "h2")
+        cl.addWidget(self.update_text)
+        urow = QHBoxLayout()
+        urow.addWidget(self._button("Update now", "update_now", self.updateRequested.emit, "primary"))
+        urow.addWidget(self._button("What's new", "update_notes", self._open_update_notes))
+        urow.addWidget(self._button("Skip this version", "update_skip", self._skip_update))
+        urow.addStretch(1)
+        cl.addLayout(urow)
+        c.hide()
+        v.addWidget(c)
+        self._update_info = None
         c, cl = card()
         row = QHBoxLayout()
         row.setSpacing(22)
@@ -792,6 +807,16 @@ class Panel(QMainWindow):
         f.addRow("", self._bind("switch", d, "mirror_on_top", R, "display.mirror_on_top",
                                 after=self.displayModeChanged.emit))
         v.addWidget(c)
+        c, cl = card("Updates")
+        f = self._form(cl)
+        f.addRow("", self._bind("switch", lambda: self.cfg.updates, "check_on_start", R, "updates.check_on_start"))
+        ur = QHBoxLayout()
+        ur.addWidget(self._button("Check for updates now", "check_updates", self.updateCheckRequested.emit))
+        self.update_status = label("", "muted")
+        ur.addWidget(self.update_status, 1)
+        f.addRow("", ur)
+        v.addWidget(c)
+
         c, cl = card("Command line (for scripts and AI agents)",
                      "The mct tool controls everything on these pages: settings, profiles, targets, the AI model, "
                      "what to watch, start and stop. Changes apply live while MineColorTrack is open.")
@@ -835,6 +860,36 @@ class Panel(QMainWindow):
             self._help_sections[key] = c
         v.addStretch(1)
         return w
+
+    # ---------- updates ----------
+    def show_update(self, info, manual=False):
+        """info from updater.check(); manual = the person pressed Check now."""
+        self._update_info = info
+        newer = info.get("newer")
+        skipped = info.get("latest") == self.cfg.updates.skip_version
+        if newer:
+            self.update_status.setText("Version %s is available (you have %s)." % (info["latest"], info["current"]))
+        else:
+            self.update_status.setText("You have the newest version (%s)." % info["current"])
+        if newer and (manual or not skipped):
+            self.update_text.setText("MineColorTrack %s is available (you have %s)." % (info["latest"],
+                                                                                         info["current"]))
+            self.update_card.show()
+        else:
+            self.update_card.hide()
+
+    def show_update_problem(self, text):
+        self.update_status.setText(text)
+
+    def _open_update_notes(self):
+        if self._update_info and self._update_info.get("url"):
+            QDesktopServices.openUrl(QUrl(self._update_info["url"]))
+
+    def _skip_update(self):
+        if self._update_info:
+            self.cfg.updates.skip_version = self._update_info.get("latest", "")
+            self.update_card.hide()
+            self.settingsChanged.emit()
 
     # ---------- command line ----------
     @staticmethod

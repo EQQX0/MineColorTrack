@@ -58,8 +58,15 @@ Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; Value
 
 [Run]
 Filename: "{app}\{#MyAppExe}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
+; After an update started from inside MineColorTrack (silent, /UPDATE=1), open it again.
+Filename: "{app}\{#MyAppExe}"; Flags: nowait runasoriginaluser; Check: IsUpdateRun
 
 [Code]
+function IsUpdateRun: Boolean;
+begin
+  Result := ExpandConstant('{param:UPDATE|0}') = '1';
+end;
+
 function NotInPath(Dir: String): Boolean;
 var
   Current: String;
