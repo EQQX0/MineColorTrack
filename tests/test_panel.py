@@ -69,3 +69,14 @@ def test_watch_choice_is_generic(panel):
 def test_tip_texts_present():
     for key, (text, tiptext) in TIPS.items():
         assert tiptext.strip(), key
+
+
+def test_add_target_starts_off_and_asks_for_colour(panel):
+    asked = []
+    panel.pickColourRequested.connect(lambda: asked.append(True))
+    n = len(panel.cfg.profile.targets)
+    panel._add_target()
+    t = panel.cfg.profile.targets[-1]
+    assert len(panel.cfg.profile.targets) == n + 1 and not t.enabled and asked
+    panel.apply_picked_colour(("#123456", 12, 30, 30))
+    assert t.enabled and t.color == "#123456"

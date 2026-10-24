@@ -89,16 +89,29 @@ def sheet(width, height):
     return img
 
 
+def example_config(full=True):
+    """A profile like one a person would build, for the pictures only (the app itself starts empty)."""
+    cfg = config.default_config()
+    targets = cfg.profile.targets
+    targets.append(config.Target(name="Creeper", color="#50C84B", outline_color="#FF00FF", hue_tol=10,
+                                 sat_min=45, val_min=55))
+    if full:
+        targets.append(config.Target(name="Zombie shirt", color="#00A8A8", outline_color="#FF6A00", hue_tol=10,
+                                     sat_min=55, val_min=35))
+        targets.append(config.Target(name="Spider eyes", color="#E01010", outline_color="#00FFFF", hue_tol=10,
+                                     sat_min=60, val_min=45, min_area=6))
+    return cfg
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     app = QApplication(sys.argv[:1])
     app.setStyle("Fusion")
     ui.apply_theme(app, "dark", 12)
     scene = cv2.resize(make_scene(), (960, 540), interpolation=cv2.INTER_NEAREST)
-    cfg = config.default_config()
-    cfg.active_profile = "Minecraft: common hostiles"
+    cfg = example_config()
     cfg.capture.source = "window"
-    cfg.capture.window_title, cfg.capture.window_exe = "PS Remote Play", "RemotePlay.exe"
+    cfg.capture.window_title, cfg.capture.window_exe = "Minecraft", "Minecraft.Windows.exe"
 
     panel = Panel(cfg, r"C:\Users\you\AppData\Roaming\MineColorTrack\config.json")
     panel.resize(1100, 760)
@@ -121,8 +134,8 @@ def main():
     wb.blockSignals(True)
     panel.monitor_box.blockSignals(True)
     wb.clear()
-    for text, data in (("PS Remote Play  (RemotePlay.exe)", ("PS Remote Play", "RemotePlay.exe")),
-                       ("Minecraft  (Minecraft.Windows.exe)", ("Minecraft", "Minecraft.Windows.exe")),
+    for text, data in (("Minecraft  (Minecraft.Windows.exe)", ("Minecraft", "Minecraft.Windows.exe")),
+                       ("PS Remote Play  (RemotePlay.exe)", ("PS Remote Play", "RemotePlay.exe")),
                        ("Xbox  (XboxPcApp.exe)", ("Xbox", "XboxPcApp.exe")),
                        ("OBS 30  (obs64.exe)", ("OBS 30", "obs64.exe"))):
         wb.addItem(text, data)
@@ -174,8 +187,7 @@ def main():
     tiles = []
     for style, marker, labels, held in (("box", "arrow", False, False), ("corners", "dot", False, False),
                                         ("ellipse", "none", True, False)):
-        c2 = config.default_config()
-        c2.active_profile = "Minecraft: creepers"
+        c2 = example_config(full=False)
         o = c2.profile.outline
         o.style, o.marker, o.labels = style, marker, labels
         o.thickness = 5
@@ -192,8 +204,7 @@ def main():
     img.save(os.path.join(OUT, "help_outline.png"))
 
     # 6. Overlay vs mirror
-    c3 = config.default_config()
-    c3.active_profile = "Minecraft: creepers"
+    c3 = example_config(full=False)
     c3.display.crosshair = True
     over = render_view(c3, scene, False, (480, 270))
     mirror = render_view(c3, scene, True, (480, 300))

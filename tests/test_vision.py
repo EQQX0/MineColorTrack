@@ -1,3 +1,4 @@
+import dataclasses
 import json
 import os
 import sys
@@ -12,7 +13,7 @@ from scene import CREEPERS, make_scene  # noqa: E402
 
 
 def creeper_target():
-    return config.default_profiles()["Minecraft: creepers"].targets[0]
+    return config.Target(name="Creeper", color="#50C84B", hue_tol=10, sat_min=45, val_min=55)
 
 
 def test_detects_both_creepers_and_nothing_else():
@@ -71,6 +72,7 @@ def test_patch_stats_suggests_working_tolerances():
 
 def test_config_roundtrip_and_bad_values(tmp_path):
     cfg = config.default_config()
+    cfg.profile.targets.append(creeper_target())
     cfg.profile.outline.style = "corners"
     cfg.capture.region = [1, 2, 300, 400]
     p = tmp_path / "c.json"
@@ -99,3 +101,36 @@ def test_hotkey_parsing():
     assert winplat.parse_hotkey("Ctrl+Num5") == (winplat.MOD_CONTROL, 0x65)
     assert winplat.parse_hotkey("Ctrl+") is None
     assert winplat.parse_hotkey("Ctrl+Banana") is None
+
+
+def test_starts_empty():
+    cfg = config.default_config()
+    assert list(cfg.profiles) == [config.STARTER_PROFILE]
+    assert cfg.profile.targets == []
+    assert cfg.capture.window_title == "" and cfg.capture.window_exe == ""
+
+
+def test_migration_removes_old_built_ins_but_keeps_user_work(tmp_path):
+    legacy = config._legacy_presets()
+    edited = config.Profile(targets=[creeper_target()])
+    edited.outline.thickness = 11                                    # changed by the user: keep
+    old = config.AppConfig(profiles=dict(legacy, **{"Minecraft: creepers": edited, "Mine": edited}))
+    old.active_profile = "Minecraft: zombies"
+    old.capture.source, old.capture.window_title = "window", "PS Remote Play"
+    data = dataclasses.asdict(old)
+    del data["version"]                                              # files from 1.0 to 1.1.x have none
+    p = tmp_path / "old.json"
+    p.write_text(json.dumps(data))
+    cfg = config.load(str(p))
+    assert set(cfg.profiles) == {"Minecraft: creepers", "Mine"}
+    assert cfg.capture.window_title == "" and cfg.capture.source == "monitor"
+    assert cfg.version == 2 and cfg.active_profile in cfg.profiles
+
+    only_defaults = dataclasses.asdict(config.AppConfig(profiles=legacy))
+    del only_defaults["version"]
+    p.write_text(json.dumps(only_defaults))
+    assert list(config.load(str(p)).profiles) == [config.STARTER_PROFILE]
+
+    kept = dataclasses.asdict(old)                                   # already new format: untouched
+    p.write_text(json.dumps(kept))
+    assert config.load(str(p)).capture.window_title == "PS Remote Play"

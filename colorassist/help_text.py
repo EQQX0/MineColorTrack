@@ -7,7 +7,7 @@ TIPS = {
                   "You can also use the Start / stop hotkey while playing."),
     "profile": ("Profile", "A profile is a saved set of targets and outline settings.\n"
                            "Use different profiles for different games, biomes or times of day."),
-    "manage_profiles": ("", "Duplicate, rename or delete the current profile,\nor bring back the built-in presets."),
+    "manage_profiles": ("", "Make a new empty profile, or duplicate, rename or delete the current one."),
     "outline_switch": ("Show outlines", "Show or hide the outlines for this profile."),
     "outline_options": ("", "Open the Outline page with all outline settings."),
     "home_target": ("", "Turn this target on or off. Targets that are off are not searched for."),
@@ -46,7 +46,8 @@ TIPS = {
                                                "drawn at full size."),
     # Targets
     "target_list": ("", "Targets in this profile. Select one to edit it."),
-    "target_add": ("", "Add a new target to this profile."),
+    "target_add": ("", "Add a new target to this profile and pick its colour from the game straight away.\n"
+                     "It switches on once its colour is picked."),
     "target_copy": ("", "Make a copy of the selected target, for example to track the same mob at night."),
     "target_remove": ("", "Delete the selected target from this profile."),
     "pick": ("", "Freezes the current picture. Click on the thing you want outlined:\n"
@@ -138,20 +139,22 @@ HELP = [
 outline around everything that matches. It only draws; it never touches your controller, mouse or keyboard.</p>
 <ol>
 <li><b>Start / Stop</b>: begins watching. The status next to it shows how many targets are in view.</li>
-<li><b>Profile</b>: a saved set of targets and outline settings. Five Minecraft presets are included.</li>
+<li><b>Profile</b>: a saved set of targets and outline settings. You start with one empty profile,
+“My profile”; add your own targets to it, or make more profiles under <b>Manage profiles</b>.</li>
 <li><b>Outline switch</b>: show or hide outlines. <b>Options</b> opens all outline settings.</li>
 <li><b>Targets in this profile</b>: switch each colour on or off. The square on the left is the colour searched
 for, the square on the right is its outline colour.</li>
 <li><b>Watching</b>: what is being watched right now, and <b>Change</b> to pick another window or monitor.</li>
 </ol>
-<p>First time: choose what to watch, press Start, then go to Targets and pick your colours from the game.
+<p>First time: nothing is set up for you. Choose what to watch on the Watch page, press Start, then go to
+Targets, press <b>Add</b> and click on the thing you want outlined. Repeat for each kind of thing.
 Afterwards click back into your game so it receives your controller again.</p>
 """),
     ("watch", "Choosing what to watch", "help_watch.png", """
 <ol>
 <li><b>Watch</b>: an open window, a whole monitor, or a part of the screen you drag.</li>
-<li><b>Window</b>: every window that is open right now. Pick the one showing your game (for example PS Remote Play,
-the Xbox app, a capture-card viewer or a PC game). <b>Refresh</b> updates the list. The overlay follows the window
+<li><b>Window</b>: every window that is open right now. Pick the one showing your game (for example a remote-play
+app, a capture-card viewer or a PC game). <b>Refresh</b> updates the list. The overlay follows the window
 when you move or resize it. <b>Title contains</b> and <b>Program</b> are filled in for you; they help find the
 window again next time, even if its title changes.</li>
 <li><b>Monitor</b>: which screen to watch when Watch is set to a whole monitor.</li>
@@ -164,7 +167,8 @@ other windows are left out. Games in exclusive full screen may block capture; us
 """),
     ("targets", "Targets and colours", "help_targets.png", """
 <ol>
-<li><b>List</b>: the targets of this profile. Add, Copy and Remove are below it.</li>
+<li><b>List</b>: the targets of this profile. <b>Add</b> creates a target and opens the colour picker
+straight away; Copy and Remove are next to it.</li>
 <li><b>Pick colour from the game</b>: freezes the picture; click on the mob. Its colour and suggested ranges
 are filled in.</li>
 <li><b>Colour</b>: the colour searched for. Click it to choose by hand.</li>
@@ -201,8 +205,8 @@ for example on a second monitor. Keep the game itself visible somewhere (not min
 """),
     ("profiles", "Profiles, hotkeys and settings", None, """
 <ul>
-<li><b>Profiles</b> (Home, Manage profiles): duplicate one before experimenting, rename it, delete it, or restore
-the built-in presets. The profile in use is remembered.</li>
+<li><b>Profiles</b> (Home, Manage profiles): make a new empty profile, duplicate one before experimenting,
+rename or delete it. The profile in use is remembered.</li>
 <li><b>Hotkeys</b> work anywhere, also while the game is active: Start / stop, Next profile, Outline on/off.
 Type a combination such as Ctrl+Alt+O and press Apply hotkeys.</li>
 <li><b>Tracking</b>: Smoothing makes outlines steadier; Join pieces makes one outline per mob; Speck filter

@@ -1,5 +1,4 @@
-"""Settings, built-in presets and JSON load/save."""
-import copy
+"""Settings, JSON load/save, and migration of older settings files."""
 import json
 import os
 import sys
@@ -8,7 +7,7 @@ from dataclasses import asdict, dataclass, field, fields, is_dataclass
 
 @dataclass
 class Target:
-    name: str = "Target"
+    name: str = "New target"
     enabled: bool = True
     color: str = "#50C84B"      # colour to look for (hex)
     hue_tol: int = 12           # +/- degrees around the colour's hue
@@ -88,6 +87,7 @@ class AppConfig:
     hotkeys: HotkeysCfg = field(default_factory=HotkeysCfg)
     active_profile: str = ""
     profiles: dict = field(default_factory=dict)
+    version: int = 2            # settings-file format; 1 = MineColorTrack 1.0 to 1.1.x
 
     @property
     def profile(self):
@@ -112,41 +112,54 @@ CHOICES = {
 }
 
 
-def _preset_target(name, color, outline, hue_tol=12, sat_min=40, val_min=45, min_area=40):
-    return Target(name=name, color=color, outline_color=outline, hue_tol=hue_tol,
-                  sat_min=sat_min, val_min=val_min, min_area=min_area)
+STARTER_PROFILE = "My profile"
 
 
 def default_profiles():
-    """Starting points. Real colours vary with lighting and texture packs, so re-pick them in game."""
-    creeper = Profile(targets=[_preset_target("Creeper", "#50C84B", "#FF00FF", hue_tol=10, sat_min=45, val_min=55)])
-    zombie = Profile(targets=[_preset_target("Zombie shirt", "#00A8A8", "#FF6A00", hue_tol=10, sat_min=55, val_min=35)])
-    eyes = Profile(targets=[
-        _preset_target("Spider eyes", "#E01010", "#00FFFF", hue_tol=10, sat_min=60, val_min=45, min_area=6),
-        _preset_target("Enderman eyes", "#D06BF5", "#00FF66", hue_tol=12, sat_min=35, val_min=60, min_area=6),
-    ])
-    hostiles = Profile(targets=[
-        _preset_target("Creeper", "#50C84B", "#FF00FF", hue_tol=10, sat_min=45, val_min=55),
-        _preset_target("Zombie shirt", "#00A8A8", "#FF6A00", hue_tol=10, sat_min=55, val_min=35),
-        _preset_target("Spider eyes", "#E01010", "#00FFFF", hue_tol=10, sat_min=60, val_min=45, min_area=6),
-    ])
-    strong = copy.deepcopy(hostiles)
-    strong.outline.thickness = 8
-    strong.outline.padding = 10
-    strong.outline.labels = True
-    return {
-        "Minecraft: creepers": creeper,
-        "Minecraft: zombies": zombie,
-        "Minecraft: night eyes (spider, enderman)": eyes,
-        "Minecraft: common hostiles": hostiles,
-        "Minecraft: extra-bold outlines": strong,
-    }
+    """No built-in content: one empty profile that people fill with their own targets."""
+    return {STARTER_PROFILE: Profile()}
 
 
 def default_config():
     cfg = AppConfig(profiles=default_profiles())
-    cfg.active_profile = next(iter(cfg.profiles))
+    cfg.active_profile = STARTER_PROFILE
     return cfg
+
+
+def _legacy_presets():
+    """Profiles that versions 1.0 to 1.1.x created automatically. Only used to clean up old settings files."""
+    def t(name, color, outline, hue_tol, sat_min, val_min, min_area=40):
+        return Target(name=name, color=color, outline_color=outline, hue_tol=hue_tol, sat_min=sat_min,
+                      val_min=val_min, min_area=min_area)
+    creeper = lambda: t("Creeper", "#50C84B", "#FF00FF", 10, 45, 55)
+    zombie = lambda: t("Zombie shirt", "#00A8A8", "#FF6A00", 10, 55, 35)
+    spider = lambda: t("Spider eyes", "#E01010", "#00FFFF", 10, 60, 45, 6)
+    hostiles = lambda: Profile(targets=[creeper(), zombie(), spider()])
+    strong_10 = hostiles()
+    strong_10.outline.thickness = 6
+    strong_11 = hostiles()
+    strong_11.outline.thickness, strong_11.outline.padding, strong_11.outline.labels = 8, 10, True
+    return {
+        "Minecraft: creepers": Profile(targets=[creeper()]),
+        "Minecraft: zombies": Profile(targets=[zombie()]),
+        "Minecraft: night eyes (spider, enderman)": Profile(
+            targets=[spider(), t("Enderman eyes", "#D06BF5", "#00FF66", 12, 35, 60, 6)]),
+        "Minecraft: common hostiles": hostiles(),
+        "Minecraft: strong low-vision": strong_10,
+        "Minecraft: extra-bold outlines": strong_11,
+    }
+
+
+def _migrate_v1(cfg):
+    """Remove what older versions filled in by themselves; keep everything the person changed or made."""
+    legacy = _legacy_presets()
+    cfg.profiles = {name: prof for name, prof in cfg.profiles.items()
+                    if not (name in legacy and prof == legacy[name])}
+    cap = cfg.capture
+    if cap.window_title == "PS Remote Play" and not cap.window_exe:   # 1.0's built-in default
+        cap.window_title = ""
+        if cap.source == "window":
+            cap.source = "monitor"
 
 
 def _fill(obj, data):
@@ -198,6 +211,10 @@ def load(path):
     except (OSError, ValueError):
         return default_config()
     cfg = _fill(AppConfig(), data)
+    old_version = data.get("version", 1) if isinstance(data, dict) else 1
+    if not isinstance(old_version, int) or old_version < 2:
+        _migrate_v1(cfg)
+    cfg.version = 2
     if not cfg.profiles:
         cfg.profiles = default_profiles()
     cfg.profile  # normalises active_profile

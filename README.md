@@ -1,7 +1,7 @@
 # MineColorTrack
 
-A low-vision helper for Windows, built with Minecraft in mind. It watches any open window (PS Remote Play,
-the Xbox app, a capture-card viewer, a PC game) or any monitor, finds things of a chosen colour (for example
+A low-vision helper for Windows, built with Minecraft in mind. It watches any open window (a remote-play
+app, a capture-card viewer, a PC game) or any monitor, finds things of a chosen colour (for example
 creepers) and draws clear outlines around them.
 
 It only draws on screen. It never sends controller, mouse or keyboard input to the game.
@@ -26,11 +26,13 @@ Requirements: 64-bit Windows 10 version 2004 or newer, or Windows 11. Nothing el
 
 ## Quick start for Minecraft
 
-1. Start your game (for example Minecraft through PS Remote Play). Keep its window visible (not minimised).
-2. Open MineColorTrack from the desktop shortcut. On **Watch**, pick the game's window from the list
-   (or a monitor), choose a profile such as "Minecraft: creepers" on **Home** and press **Start**.
-3. Go to **Targets**, press **Pick colour from the game...** and click on a creeper.
-   The live preview shows in white what will be highlighted.
+1. Start your game. Keep its window visible (not minimised).
+2. Open MineColorTrack from the desktop shortcut. Nothing is set up for you: you start with one empty
+   profile, "My profile". On **Watch**, pick the game's window from the list (or a monitor), then press
+   **Start** on **Home**.
+3. Go to **Targets**, press **Add** and click on the thing you want outlined (for example a creeper).
+   The new target switches on once its colour is picked. The live preview shows in white what will be outlined.
+   Repeat for each kind of thing.
 4. If grass or leaves light up too, raise **Brightness min** and **Saturation min** a little,
    lower **Hue tolerance**, or raise **Minimum size**. If the creeper is only partly white, do the opposite.
 5. Click back into your game so it gets your controller input again.
@@ -57,8 +59,9 @@ Duplicate) works better than one compromise.
 | Settings | Dark, light or high-contrast (black and yellow) theme; text size; start on launch; keep running in the system tray |
 | Help | Illustrated explanations of every page, tuning colours, overlay vs. mirror, troubleshooting |
 
-Five Minecraft presets are included (creepers, zombies, night eyes, common hostiles, strong low-vision).
-Their colours are starting points only; re-pick them in your own game.
+There are no built-in presets: every target and profile is your own. Use Home > Manage profiles to make new
+empty profiles or duplicates. Updating from 1.0 or 1.1 removes the presets those versions created (unless you
+changed them) and the old PS Remote Play window default; everything you made yourself is kept.
 Settings file: `%APPDATA%\MineColorTrack\config.json`. Crash details, if any: `error.log` in the same folder.
 
 ## Overlay vs. mirror window

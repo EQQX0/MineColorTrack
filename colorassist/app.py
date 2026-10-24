@@ -131,7 +131,10 @@ class Controller:
         self._make_view()
         self.engine.start()
         self._set_running(True)
-        self.panel.set_status("Starting...")
+        if not any(t.enabled for t in self.cfg.profile.targets):
+            self.panel.set_status("Running, but this profile has no targets yet. Go to Targets and press Add.")
+        else:
+            self.panel.set_status("Starting...")
 
     def stop(self):
         self.engine.stop()
@@ -373,6 +376,8 @@ def run_selftest(out_path):
     cfg = config.default_config()
     path = os.path.join(tempfile.mkdtemp(), "config.json")
     holder = {}
+
+    cfg.profile.targets.append(config.Target(name="Self-test", color="#50C84B"))
 
     def vision_check():
         frame = np.full((240, 320, 3), 90, np.uint8)

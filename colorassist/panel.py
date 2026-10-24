@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (QColorDialog, QComboBox, QFormLayout, QHBoxLayout, 
                              QStackedWidget, QToolButton, QVBoxLayout, QWidget)
 
 from . import APP_NAME, __version__, engine, winplat
-from .config import CHOICES, Target, default_profiles
+from .config import CHOICES, Profile, Target
 from .help_text import HELP, NAV_TIPS, TIPS
 from .ui import ColourButton, SliderField, ToggleSwitch, card, label, swatch
 
@@ -275,9 +275,8 @@ class Panel(QMainWindow):
         more.setToolTip(tip("manage_profiles"))
         more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         menu = QMenu(more)
-        for text, fn in (("Duplicate...", self._dup_profile), ("Rename...", self._rename_profile),
-                         ("Delete", self._delete_profile), (None, None),
-                         ("Restore built-in presets", self._restore_presets)):
+        for text, fn in (("New empty profile...", self._new_profile), ("Duplicate...", self._dup_profile),
+                         ("Rename...", self._rename_profile), (None, None), ("Delete", self._delete_profile)):
             if text is None:
                 menu.addSeparator()
                 continue
@@ -747,14 +746,14 @@ class Panel(QMainWindow):
         self.profileChanged.emit()
         self.settingsChanged.emit()
 
-    def _restore_presets(self):
-        added = [k for k in default_profiles() if k not in self.cfg.profiles]
-        for k, val in default_profiles().items():
-            self.cfg.profiles.setdefault(k, val)
-        self._reload_profiles()
-        self.settingsChanged.emit()
-        QMessageBox.information(self, APP_NAME,
-                                "Restored: %s" % (", ".join(added) if added else "nothing was missing"))
+    def _new_profile(self):
+        name = self._ask_name("New profile", "Profile %d" % (len(self.cfg.profiles) + 1))
+        if name:
+            self.cfg.profiles[name] = Profile()
+            self.cfg.active_profile = name
+            self._reload_profiles()
+            self.profileChanged.emit()
+            self.settingsChanged.emit()
 
     # ---------- targets ----------
     def _current_target(self):
@@ -796,10 +795,16 @@ class Panel(QMainWindow):
             w.setEnabled(has)
         self._emit_preview()
 
-    def _add_target(self):
-        self.cfg.profile.targets.append(Target(name="Target %d" % (len(self.cfg.profile.targets) + 1)))
+    def _add_target(self, pick=True):
+        """New targets start switched off until their colour is picked, so nothing is outlined by accident."""
+        self.cfg.profile.targets.append(Target(name="Target %d" % (len(self.cfg.profile.targets) + 1),
+                                               enabled=False))
         self._reload_targets(select=len(self.cfg.profile.targets) - 1)
         self.settingsChanged.emit()
+        if pick:
+            self.status.setText("New target added. Click on the thing to outline; it switches on once its "
+                                "colour is picked.")
+            self.pickColourRequested.emit()
 
     def _dup_target(self):
         t = self._current_target()
@@ -820,10 +825,12 @@ class Panel(QMainWindow):
     def apply_picked_colour(self, values):
         t = self._current_target()
         if t is None:
-            self._add_target()
+            self._add_target(pick=False)
             t = self._current_target()
         t.color, t.hue_tol, t.sat_min, t.val_min = values
         t.sat_max = t.val_max = 100
+        t.enabled = True
+        self._refresh_target_names()
         self._target_selected()
         self._rebuild_home_targets()
         self.settingsChanged.emit()
@@ -871,10 +878,14 @@ class Panel(QMainWindow):
         self.side_saved.setText(text)
 
     def show_result(self, res):
-        x, y, w, h = res.rect
-        self.status_title.setText("Running · %d target%s in view" % (res.count, "" if res.count == 1 else "s"))
-        self.status.setText("%.0f fps · %s · profile “%s”"
-                            % (res.fps, self.watch_text(), self.cfg.active_profile))
+        if not any(t.enabled for t in self.cfg.profile.targets):
+            self.status_title.setText("Running · no targets yet")
+            self.status.setText("This profile has no switched-on targets. Go to Targets, press Add and click on "
+                                "the thing you want outlined.")
+        else:
+            self.status_title.setText("Running · %d target%s in view" % (res.count, "" if res.count == 1 else "s"))
+            self.status.setText("%.0f fps · %s · profile “%s”"
+                                % (res.fps, self.watch_text(), self.cfg.active_profile))
         if res.preview_img is not None:
             pm = QPixmap.fromImage(res.preview_img)
             lw = max(100, self.preview_label.width() - 16)
