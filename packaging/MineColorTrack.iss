@@ -30,6 +30,8 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
+; The app holds this mutex while running, so Setup and the uninstaller ask you to close it first.
+AppMutex=MineColorTrackRunning
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -40,9 +42,32 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "..\dist\MineColorTrack\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+[InstallDelete]
+; 1.0.x put a single shortcut directly in the Start menu; it now lives in a MineColorTrack folder.
+Type: files; Name: "{autoprograms}\{#MyAppName}.lnk"
+
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"
+Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"; Comment: "Remove {#MyAppName} from this PC"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExe}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+// After the program files are removed, offer to delete the user's settings and profiles too.
+// Silent uninstalls (/SUPPRESSMSGBOXES) keep them.
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  SettingsDir: String;
+begin
+  if CurUninstallStep = usPostUninstall then
+  begin
+    SettingsDir := ExpandConstant('{userappdata}\{#MyAppName}');
+    if DirExists(SettingsDir) then
+      if SuppressibleMsgBox('Also delete your {#MyAppName} settings and profiles?' + #13#10#13#10 +
+                            'Choose No to keep them for a later reinstall.' + #13#10#13#10 + SettingsDir,
+                            mbConfirmation, MB_YESNO or MB_DEFBUTTON2, IDNO) = IDYES then
+        DelTree(SettingsDir, True, True, True);
+  end;
+end;

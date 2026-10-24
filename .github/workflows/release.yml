@@ -53,7 +53,7 @@ jobs:
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DMyAppVersion=${{ steps.ver.outputs.version }}" packaging\MineColorTrack.iss
           if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
 
-      - name: Test the installer (silent install, shortcut, launch)
+      - name: Test the installer (silent install, desktop shortcut, launch)
         shell: pwsh
         run: |
           $setup = Get-ChildItem dist\MineColorTrack-Setup-*.exe | Select-Object -First 1
@@ -70,6 +70,26 @@ jobs:
           "Installed OK: $exe"
           "Desktop shortcut: $lnk"
           "Installer size: {0:N1} MB" -f ($setup.Length / 1MB)
+
+      - name: Test the uninstaller (Start menu shortcuts, silent uninstall)
+        shell: pwsh
+        run: |
+          $programs = [Environment]::GetFolderPath('Programs')
+          $appLnk = Join-Path $programs 'MineColorTrack\MineColorTrack.lnk'
+          $uninstLnk = Join-Path $programs 'MineColorTrack\Uninstall MineColorTrack.lnk'
+          if (!(Test-Path $appLnk)) { throw "No Start menu shortcut: $appLnk" }
+          if (!(Test-Path $uninstLnk)) { throw "No Start menu uninstall shortcut: $uninstLnk" }
+          $settings = Join-Path $env:APPDATA 'MineColorTrack'
+          New-Item -ItemType Directory -Force $settings | Out-Null
+          Set-Content (Join-Path $settings 'config.json') '{}'
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs\MineColorTrack'
+          Start-Process (Join-Path $dir 'unins000.exe') -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait
+          for ($i = 0; $i -lt 60 -and (Test-Path (Join-Path $dir 'MineColorTrack.exe')); $i++) { Start-Sleep 1 }
+          if (Test-Path (Join-Path $dir 'MineColorTrack.exe')) { throw 'Program files still present after uninstall' }
+          if (Test-Path (Join-Path ([Environment]::GetFolderPath('Desktop')) 'MineColorTrack.lnk')) { throw 'Desktop shortcut still present' }
+          if (Test-Path $uninstLnk) { throw 'Start menu shortcuts still present' }
+          if (!(Test-Path (Join-Path $settings 'config.json'))) { throw 'A silent uninstall should keep the settings' }
+          'Uninstall OK: program and shortcuts removed; settings kept (silent default answer is No)'
 
       - uses: actions/upload-artifact@v4
         with:

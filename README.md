@@ -13,7 +13,11 @@ It only draws on screen. It never sends controller, mouse or keyboard input to t
 1. Open the **Releases** page of this repository (right-hand side on GitHub, or `/releases`).
 2. Under **Assets** of the newest release, download `MineColorTrack-Setup-<version>.exe`.
 3. Run it. It installs for your Windows user only (no administrator password), adds a
-   **desktop shortcut** and a Start menu entry. Uninstall from Windows Settings > Apps.
+   **desktop shortcut** and a **MineColorTrack** folder in the Start menu.
+
+To uninstall, use **Start menu > MineColorTrack > Uninstall MineColorTrack**, or Windows Settings > Apps >
+Installed apps. At the end it asks whether to also delete your settings and profiles; choose No to keep them
+for a later reinstall.
 
 Windows SmartScreen may say "Windows protected your PC" because the installer is not code-signed.
 Click **More info**, then **Run anyway**.

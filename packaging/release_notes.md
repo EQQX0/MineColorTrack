@@ -2,7 +2,10 @@
 
 Download **MineColorTrack-Setup-<version>.exe** below (under "Assets"), run it, and follow the installer.
 It installs for your Windows user only (no administrator password needed), adds a **desktop shortcut**
-and a Start menu entry, and can be removed from Windows Settings > Apps.
+and a **MineColorTrack** folder in the Start menu.
+
+To uninstall: **Start menu > MineColorTrack > Uninstall MineColorTrack** (or Windows Settings > Apps).
+It asks whether to also delete your settings and profiles.
 
 Windows SmartScreen may say "Windows protected your PC" because the installer is not code-signed.
 Click **More info**, then **Run anyway**.
@@ -18,6 +21,12 @@ Requirements: Windows 10 (version 2004 or newer) or Windows 11, 64-bit. Nothing 
 4. Click back into your game so it receives your controller again.
 
 Every setting has a tooltip, and the **Help** page explains everything with pictures.
+
+## What's new in 1.1.1
+
+- "Uninstall MineColorTrack" shortcut in the Start menu folder.
+- The uninstaller asks whether to also delete your settings and profiles.
+- Setup and the uninstaller ask you to close MineColorTrack first if it is running.
 
 ## What's new in 1.1.0
 

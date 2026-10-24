@@ -431,6 +431,7 @@ def main(argv=None):
     winplat.set_app_id("EQQX0.%s" % APP_NAME)
     if args.selftest:
         return run_selftest(args.selftest)
+    winplat.hold_running_mutex()
     app = QApplication(sys.argv[:1])
     app.setApplicationName(APP_NAME)
     app.setStyle("Fusion")

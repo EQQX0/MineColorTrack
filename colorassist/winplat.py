@@ -224,3 +224,15 @@ def set_app_id(app_id):
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
         except (AttributeError, OSError):
             pass
+
+
+_mutex = None
+
+
+def hold_running_mutex(name="MineColorTrackRunning"):
+    """Named mutex the installer/uninstaller checks (Inno Setup AppMutex) to ask you to close the app first."""
+    global _mutex
+    if IS_WIN and _mutex is None:
+        kernel32.CreateMutexW.argtypes = [ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR]
+        kernel32.CreateMutexW.restype = wintypes.HANDLE
+        _mutex = kernel32.CreateMutexW(None, False, name)
