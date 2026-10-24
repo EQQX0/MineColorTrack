@@ -73,7 +73,7 @@ class Engine(QObject):
             return
         self._stop.clear()
         self._tracker.reset()
-        self._thread = threading.Thread(target=self._run, name="ColorAssistEngine", daemon=True)
+        self._thread = threading.Thread(target=self._run, name="MineColorTrackEngine", daemon=True)
         self._thread.start()
 
     def stop(self):

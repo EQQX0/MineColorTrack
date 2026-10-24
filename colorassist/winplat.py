@@ -30,7 +30,7 @@ SWP_NOACTIVATE, SWP_SHOWWINDOW = 0x0010, 0x0040
 WM_HOTKEY = 0x0312
 MOD_ALT, MOD_CONTROL, MOD_SHIFT, MOD_WIN, MOD_NOREPEAT = 0x1, 0x2, 0x4, 0x8, 0x4000
 
-OWN_TITLE = "ColorAssist"
+OWN_TITLE = "MineColorTrack"
 
 
 def exclude_from_capture(hwnd):
@@ -136,3 +136,12 @@ def hotkey_id_from_msg(message_ptr):
         return None
     msg = wintypes.MSG.from_address(int(message_ptr))
     return int(msg.wParam) if msg.message == WM_HOTKEY else None
+
+
+def set_app_id(app_id):
+    """Give the process its own taskbar identity so Windows shows our icon, not Python's."""
+    if IS_WIN:
+        try:
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+        except (AttributeError, OSError):
+            pass

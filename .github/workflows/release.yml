@@ -1,0 +1,88 @@
+name: Build Windows installer
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller pytest pillow
+
+      - name: Unit tests
+        run: python -m pytest -q tests
+
+      - name: Work out version
+        id: ver
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq 'tag') { $v = $env:GITHUB_REF_NAME.TrimStart('v') }
+          else { $v = (python -c "import colorassist; print(colorassist.__version__)").Trim() }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "Version: $v"
+
+      - name: Build app with PyInstaller
+        run: pyinstaller --noconfirm --clean packaging/MineColorTrack.spec
+
+      - name: Self-test the built app on Windows
+        shell: pwsh
+        run: |
+          $report = Join-Path $pwd 'selftest.json'
+          $p = Start-Process -FilePath 'dist\MineColorTrack\MineColorTrack.exe' -ArgumentList '--selftest', "`"$report`"" -Wait -PassThru
+          if (Test-Path $report) { Get-Content $report } else { throw 'Self-test wrote no report' }
+          if ($p.ExitCode -ne 0) { throw "Self-test failed with exit code $($p.ExitCode)" }
+
+      - name: Build installer with Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DMyAppVersion=${{ steps.ver.outputs.version }}" packaging\MineColorTrack.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
+
+      - name: Test the installer (silent install, shortcut, launch)
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist\MineColorTrack-Setup-*.exe | Select-Object -First 1
+          $p = Start-Process $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER','/TASKS=desktopicon' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Installer exit code $($p.ExitCode)" }
+          $exe = Join-Path $env:LOCALAPPDATA 'Programs\MineColorTrack\MineColorTrack.exe'
+          $lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'MineColorTrack.lnk'
+          if (!(Test-Path $exe)) { throw "Not installed: $exe" }
+          if (!(Test-Path $lnk)) { throw "No desktop shortcut: $lnk" }
+          $report = Join-Path $pwd 'installed-selftest.json'
+          $q = Start-Process -FilePath $exe -ArgumentList '--selftest', "`"$report`"" -Wait -PassThru
+          Get-Content $report
+          if ($q.ExitCode -ne 0) { throw "Installed app self-test failed" }
+          "Installed OK: $exe"
+          "Desktop shortcut: $lnk"
+          "Installer size: {0:N1} MB" -f ($setup.Length / 1MB)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MineColorTrack-installer
+          path: |
+            dist/MineColorTrack-Setup-*.exe
+            selftest.json
+            installed-selftest.json
+
+      - name: Publish GitHub release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: MineColorTrack ${{ steps.ver.outputs.version }}
+          body_path: packaging/release_notes.md
+          files: dist/MineColorTrack-Setup-*.exe

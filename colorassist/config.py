@@ -95,7 +95,9 @@ class DisplayCfg:
     crosshair_color: str = "#00FFFF"
     mirror_on_top: bool = False
     ui_font_pt: int = 12
+    theme: str = "dark"
     start_on_launch: bool = False
+    close_to_tray: bool = False
 
 
 @dataclass
@@ -141,6 +143,8 @@ CHOICES = {
                                ("monitor", "Whole monitor"), ("region", "Custom region")],
     ("DisplayCfg", "mode"): [("overlay", "Overlay on top of the game"),
                              ("mirror", "Separate mirror window")],
+    ("DisplayCfg", "theme"): [("dark", "Dark"), ("light", "Light"),
+                              ("contrast", "High contrast (black and yellow)")],
 }
 
 
@@ -217,8 +221,8 @@ def _fill(obj, data):
 def default_path():
     if sys.platform == "win32":
         base = os.environ.get("APPDATA") or os.path.expanduser("~")
-        return os.path.join(base, "ColorAssist", "config.json")
-    return os.path.join(os.path.expanduser("~"), ".config", "colorassist", "config.json")
+        return os.path.join(base, "MineColorTrack", "config.json")
+    return os.path.join(os.path.expanduser("~"), ".config", "minecolortrack", "config.json")
 
 
 def load(path):

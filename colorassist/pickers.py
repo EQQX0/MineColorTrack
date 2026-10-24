@@ -13,7 +13,7 @@ class RegionPicker(QWidget):
 
     def __init__(self, shot_bgr, mon_rect):
         super().__init__()
-        self.setWindowTitle("ColorAssist - select region")
+        self.setWindowTitle("MineColorTrack - select region")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
         self.img = to_qimage(shot_bgr)
         self.mon = mon_rect
@@ -135,7 +135,7 @@ class ColourPicker(QDialog):
 
     def __init__(self, frame, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("ColorAssist - pick a colour")
+        self.setWindowTitle("MineColorTrack - pick a colour")
         self.frame = frame
         self.result_values = None
         lay = QVBoxLayout(self)

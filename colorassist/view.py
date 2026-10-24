@@ -17,14 +17,14 @@ class AssistView(QWidget):
         self.message = ""
         self.test_colour = None   # solid fill used by the capture self-test
         if mirror:
-            self.setWindowTitle("ColorAssist - mirror")
+            self.setWindowTitle("MineColorTrack - mirror")
             flags = Qt.WindowType.Window
             if cfg.display.mirror_on_top:
                 flags |= Qt.WindowType.WindowStaysOnTopHint
             self.setWindowFlags(flags)
             self.resize(960, 540)
         else:
-            self.setWindowTitle("ColorAssist overlay")
+            self.setWindowTitle("MineColorTrack overlay")
             self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
                                 | Qt.WindowType.Tool | Qt.WindowType.WindowTransparentForInput
                                 | Qt.WindowType.NoDropShadowWindowHint)
