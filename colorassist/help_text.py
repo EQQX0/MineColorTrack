@@ -43,6 +43,11 @@ TIPS = {
                                          "more closely but uses more CPU.\n30 is a good start; above 60 only helps "
                                          "on a 120 Hz screen with a fast PC.\nThe speed actually reached is shown "
                                          "on the Home page while running."),
+    "capture.method": ("Capture method", "How the screen is read.\n"
+                                         "- Fast: Windows Desktop Duplication, made for high frame rates.\n"
+                                         "- Compatible: the classic screen copy; slower on big areas.\n"
+                                         "- Automatic: fast when it works on this PC, otherwise compatible.\n"
+                                         "The method in use is shown on the Home page while running."),
     "capture.scale": ("Processing resolution", "Size at which each frame is analysed. 100% finds the smallest, "
                                                "farthest targets;\nlower values are faster. Outlines are always "
                                                "drawn at full size."),
@@ -212,7 +217,8 @@ window again next time, even if its title changes.</li>
 <li><b>Monitor</b>: which screen to watch when Watch is set to a whole monitor.</li>
 <li><b>Region</b>: <b>Select region on screen</b> shows a still picture of the monitor; drag a box around the
 game picture.</li>
-<li><b>Performance</b>: frames per second and processing resolution. Lower them if your PC struggles.</li>
+<li><b>Performance</b>: frames per second (up to 120), processing resolution, and the capture method.
+Automatic uses Windows' fast Desktop Duplication when it works. Lower the numbers if your PC struggles.</li>
 </ol>
 <p>Tip: watching only the game window gives fewer false matches than a whole monitor, because the taskbar and
 other windows are left out. Games in exclusive full screen may block capture; use windowed or borderless mode.</p>

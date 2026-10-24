@@ -4,9 +4,19 @@ import os
 root = os.path.abspath(os.path.join(SPECPATH, ".."))
 icon = os.path.join(root, "colorassist", "assets", "icon.ico")
 
+from PyInstaller.utils.hooks import collect_submodules
+
+hidden = []
+for pkg in ("dxcam", "comtypes"):          # Windows fast capture; imported lazily, so list it explicitly
+    try:
+        hidden += collect_submodules(pkg)
+    except Exception:
+        pass
+
 a = Analysis(
     [os.path.join(root, "run.py")],
     pathex=[root],
+    hiddenimports=hidden,
     datas=[(os.path.join(root, "colorassist", "assets"), os.path.join("colorassist", "assets"))],
     excludes=["tkinter", "PIL", "pytest", "matplotlib", "IPython", "onnx", "torch", "torchvision", "ultralytics",
               "scipy", "pandas", "polars", "sympy"],

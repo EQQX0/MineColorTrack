@@ -12,7 +12,7 @@ from PyQt6.QtCore import QAbstractNativeEventFilter, QTimer
 from PyQt6.QtGui import QAction, QColor, QIcon
 from PyQt6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
 
-from . import APP_NAME, __version__, config, dataset, detector, engine, ui, vision, winplat
+from . import APP_NAME, __version__, capture, config, dataset, detector, engine, ui, vision, winplat
 from .panel import PAGES, Panel
 from .pickers import ColourPicker, RegionPicker
 from .view import AssistView
@@ -198,7 +198,10 @@ class Controller:
         for _ in range(4):
             self.app.processEvents()
             time.sleep(0.05)
-        patch = engine.grab_rect(rect)
+        try:
+            patch = engine.grab_rect(rect, self.cfg.capture.method)
+        except Exception:
+            patch = engine.grab_rect(rect)
         v.test_colour = None
         winplat.place_window(v, (rect[0], rect[1], 1, 1))
         v.update()
@@ -449,10 +452,26 @@ def run_selftest(out_path, model_path=None):
         ctl.view.resize(1, 1)
         ctl.view.show()
         protected = ctl.view.protect_from_capture()
-        hidden = ctl._overlay_hidden_from_capture() if protected else None
+        out = {"exclude_api_accepted": protected}
+        for method in ("compatible", "fast"):
+            cfg.capture.method = method
+            out["hidden_from_" + method] = ctl._overlay_hidden_from_capture() if protected else None
+        cfg.capture.method = "auto"
         ctl.view.close()
         ctl.view = None
-        return {"exclude_api_accepted": protected, "hidden_in_capture": hidden}
+        return out
+
+    def capture_check():
+        rect = engine.grab_monitor_rect(1)
+        rect = (rect[0], rect[1], min(1920, rect[2]), min(1080, rect[3]))
+        out = {"area": list(rect), "fast_library": capture.fast_available()}
+        for method in ("compatible", "auto"):
+            cap = capture.get(method)
+            ms = capture.benchmark(cap, rect, 20)
+            out[method] = {"used": cap.name, "ms_per_frame": round(ms, 2), "max_fps": round(1000 / max(ms, 1e-3)),
+                           "problem": cap.problem}
+        return out
+    check("capture_speed", capture_check, False)
 
     check("vision", vision_check, True)
     check("control_panel", panel_check, True)

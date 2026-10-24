@@ -75,6 +75,7 @@ class CaptureCfg:
     region: list = field(default_factory=lambda: [100, 100, 1280, 720])
     fps: int = 30
     scale: int = 50             # processing resolution, percent
+    method: str = "auto"        # screen capture: auto | fast | compatible
 
 
 @dataclass
@@ -129,6 +130,9 @@ CHOICES = {
     ("CaptureCfg", "source"): [("window", "An open window (follows it when it moves)"),
                                ("monitor", "A whole monitor"),
                                ("region", "Part of the screen (drag a box)")],
+    ("CaptureCfg", "method"): [("auto", "Automatic (fast when it works)"),
+                               ("fast", "Fast: Windows Desktop Duplication"),
+                               ("compatible", "Compatible: classic screen copy")],
     ("DisplayCfg", "mode"): [("overlay", "Overlay on top of the game"),
                              ("mirror", "Separate mirror window")],
     ("DisplayCfg", "theme"): [("dark", "Dark"), ("light", "Light"),

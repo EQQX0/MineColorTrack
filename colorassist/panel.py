@@ -387,6 +387,8 @@ class Panel(QMainWindow):
         self._row(f, "capture.fps", self.fps_slider)
         self._row(f, "capture.scale", self._bind("slider", cap, "scale", R, "capture.scale", lo=20, hi=100,
                                                  step=5, suffix=" %"))
+        self._row(f, "capture.method", self._bind("choice", cap, "method", R, "capture.method",
+                                                  choices_key=("CaptureCfg", "method")))
         v.addWidget(c)
         v.addStretch(1)
         self.anchors["watch"] = [self.source_box, self.window_box, self.monitor_box, self.region_btn, self.perf_card]
@@ -1074,8 +1076,9 @@ class Panel(QMainWindow):
                                 "the thing you want outlined.")
         else:
             self.status_title.setText("Running · %d target%s in view" % (res.count, "" if res.count == 1 else "s"))
-            self.status.setText("%.0f fps · %s · profile “%s”"
-                                % (res.fps, self.watch_text(), self.cfg.active_profile))
+            self.status.setText("%.0f fps · %s · profile “%s”%s"
+                                % (res.fps, self.watch_text(), self.cfg.active_profile,
+                                   (" · " + res.capture) if res.capture else ""))
         if (res.ai_device, res.ai_error) != getattr(self, "_ai_state", (None, None)):
             self._ai_state = (res.ai_device, res.ai_error)
             self._refresh_ai(res.ai_device, res.ai_error)

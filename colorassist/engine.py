@@ -8,7 +8,7 @@ import numpy as np
 from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtGui import QImage
 
-from . import detector, vision, winplat
+from . import capture, detector, vision, winplat
 
 _MSS = getattr(mss, "MSS", None) or mss.mss   # mss 10 renamed the factory
 ENTITY_BASE = 1000                              # tracker ids at or above this are AI entities, below are colour targets
@@ -29,7 +29,7 @@ def to_qimage(bgr):
 class Result:
     """One processed frame. Coordinates are in captured-frame pixels."""
     __slots__ = ("rect", "frame_size", "tracks", "frame_img", "preview_img", "fps", "count", "ai_device",
-                 "ai_error")
+                 "ai_error", "capture")
 
     def __init__(self):
         self.rect = None
@@ -40,6 +40,7 @@ class Result:
         self.count = 0
         self.ai_device = None       # "GPU"/"CPU" while a model runs
         self.ai_error = None
+        self.capture = ""           # which capture method produced the frame
 
 
 def clamp_rect(rect, bounds):
@@ -134,10 +135,12 @@ class Engine(QObject):
                     self.status.emit(msg)
                     self._stop.wait(0.5)
                     continue
-            shot = sct.grab({"left": rect[0], "top": rect[1], "width": rect[2], "height": rect[3]})
-            frame = np.ascontiguousarray(np.asarray(shot)[:, :, :3])
+            cap = capture.get(self.cfg.capture.method)
+            frame = cap.grab(rect)
             self.last_frame, self.last_rect = frame, rect
-            self.result.emit(self.process(frame, rect))
+            res = self.process(frame, rect)
+            res.capture = cap.label
+            self.result.emit(res)
 
             now = time.perf_counter()
             dt = now - last
@@ -244,7 +247,10 @@ def grab_monitor_rect(index):
         return (m["left"], m["top"], m["width"], m["height"])
 
 
-def grab_rect(rect):
+def grab_rect(rect, method=None):
+    """One picture of a rect; with `method`, through that capture method (the overlay self-test needs this)."""
+    if method:
+        return capture.get(method).grab(rect)
     with _MSS() as sct:
         shot = sct.grab({"left": rect[0], "top": rect[1], "width": rect[2], "height": rect[3]})
         return np.asarray(shot)[:, :, :3]

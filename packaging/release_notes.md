@@ -22,6 +22,12 @@ Requirements: Windows 10 (version 2004 or newer) or Windows 11, 64-bit. Nothing 
 
 Every setting has a tooltip, and the **Help** page explains everything with pictures.
 
+## What's new in 1.4.0
+
+- **Faster screen capture**: Windows Desktop Duplication, made for high frame rates (Watch > Performance >
+  Capture method). Automatic uses it when it works and falls back to the classic method otherwise.
+  The Home page shows which method is in use.
+
 ## What's new in 1.3.1
 
 - Frames per second can go up to 120 (Watch > Performance).
