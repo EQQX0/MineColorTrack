@@ -172,6 +172,8 @@ TIPS = {
     "display.close_to_tray": ("Closing the window keeps it running in the system tray", "When on, closing this window keeps MineColorTrack running as an icon\n"
                                   "next to the clock. Right-click that icon to quit."),
     "display.mirror_on_top": ("Keep the mirror window on top", "Keep the mirror window above all other windows."),
+    "copy_agent_prompt": ("", "Copies a short explanation of the mct command-line tool, to paste into an AI "
+                              "agent\nso it can change MineColorTrack's settings for you."),
     "open_folder": ("", "Open the folder that holds your settings file and the error log."),
     "help_button": ("", "Explain this page, with pictures."),
 }
@@ -316,6 +318,19 @@ removes single-pixel noise.</li>
 <li><b>Settings</b>: dark, light or high-contrast theme, text size, start automatically, keep running in the
 system tray. Everything is saved automatically.</li>
 </ul>
+"""),
+    ("cli", "Command line and AI agents", None, """
+<p>The <b>mct</b> tool (installed next to MineColorTrack, and on PATH if you ticked that during setup) controls
+everything from a terminal, a script or an AI agent. Every command prints JSON. While MineColorTrack is open,
+changes apply live; when it is closed, the settings file is edited.</p>
+<ul>
+<li><b>mct guide</b> explains all commands; <b>mct schema</b> lists every setting with allowed values.</li>
+<li><b>mct status</b>, <b>mct get capture.fps</b>, <b>mct set outline.thickness 8</b></li>
+<li><b>mct target pick Creeper shot.png 384 140</b> takes a colour from a screenshot;
+<b>mct detect shot.png --out marked.png</b> shows what would be outlined.</li>
+<li><b>mct watch window --title Minecraft</b>, <b>mct start</b>, <b>mct stop</b>, <b>mct screenshot</b></li>
+</ul>
+<p>Settings &gt; <b>Copy instructions for an AI agent</b> copies a ready-made explanation to paste into an agent.</p>
 """),
     ("trouble", "Troubleshooting", None, """
 <ul>

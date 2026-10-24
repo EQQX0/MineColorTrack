@@ -5,7 +5,7 @@ import shutil
 
 from PyQt6.QtCore import Qt, QTimer, QUrl, pyqtSignal
 from PyQt6.QtGui import QAction, QColor, QDesktopServices, QPixmap
-from PyQt6.QtWidgets import (QColorDialog, QComboBox, QFileDialog, QFormLayout, QHBoxLayout, QInputDialog, QLabel, QLineEdit,
+from PyQt6.QtWidgets import (QApplication, QColorDialog, QComboBox, QFileDialog, QFormLayout, QHBoxLayout, QInputDialog, QLabel, QLineEdit,
                              QListWidget, QMainWindow, QMenu, QMessageBox, QPushButton, QScrollArea, QSpinBox,
                              QStackedWidget, QToolButton, QVBoxLayout, QWidget)
 
@@ -792,6 +792,18 @@ class Panel(QMainWindow):
         f.addRow("", self._bind("switch", d, "mirror_on_top", R, "display.mirror_on_top",
                                 after=self.displayModeChanged.emit))
         v.addWidget(c)
+        c, cl = card("Command line (for scripts and AI agents)",
+                     "The mct tool controls everything on these pages: settings, profiles, targets, the AI model, "
+                     "what to watch, start and stop. Changes apply live while MineColorTrack is open.")
+        self.cli_path = label(self.cli_location(), "muted")
+        cl.addWidget(self.cli_path)
+        crow = QHBoxLayout()
+        crow.addWidget(self._button("Copy instructions for an AI agent", "copy_agent_prompt", self.copy_agent_prompt,
+                                    "primary"))
+        crow.addStretch(1)
+        cl.addLayout(crow)
+        v.addWidget(c)
+
         c, cl = card("About")
         cl.addWidget(label("%s %s" % (APP_NAME, __version__), "h2"))
         cl.addWidget(label("Settings are saved automatically to:\n%s" % self.config_path, "muted"))
@@ -823,6 +835,29 @@ class Panel(QMainWindow):
             self._help_sections[key] = c
         v.addStretch(1)
         return w
+
+    # ---------- command line ----------
+    @staticmethod
+    def cli_location():
+        import sys
+        if getattr(sys, "frozen", False):
+            return "Program: %s   (type mct in a terminal if it was added to PATH)" % os.path.join(
+                os.path.dirname(sys.executable), "mct.exe")
+        return "From source: python mct.py ...  (run in the MineColorTrack folder)"
+
+    def copy_agent_prompt(self):
+        import sys
+        exe = os.path.join(os.path.dirname(sys.executable), "mct.exe") if getattr(sys, "frozen", False) \
+            else "python mct.py"
+        text = ("You can control the MineColorTrack app on this PC with its command-line tool: %s "
+                "(or just `mct` if it is on PATH). Start by running `mct guide` and `mct schema`. Every command "
+                "prints JSON; errors are JSON on stderr with exit code 1. Changes apply live while the app is open. "
+                "Use `mct status` to see what it is doing, `mct get`/`mct set KEY VALUE` for settings, "
+                "`mct target ...` for colour targets, `mct model`/`mct entity` for the AI model, `mct watch ...` "
+                "for what to watch, and `mct detect IMAGE --out marked.png` to test settings on a screenshot. "
+                "Do not delete profiles or reset settings unless I ask." % exe)
+        QApplication.clipboard().setText(text)
+        QMessageBox.information(self, APP_NAME, "Copied. Paste it into your AI agent's chat.")
 
     # ---------- refresh ----------
     def refresh_all(self):

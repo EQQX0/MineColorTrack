@@ -59,7 +59,7 @@ jobs:
         shell: pwsh
         run: |
           $setup = Get-ChildItem dist\MineColorTrack-Setup-*.exe | Select-Object -First 1
-          $p = Start-Process $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER','/TASKS=desktopicon' -Wait -PassThru
+          $p = Start-Process $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER','/TASKS=desktopicon,addtopath' -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "Installer exit code $($p.ExitCode)" }
           $exe = Join-Path $env:LOCALAPPDATA 'Programs\MineColorTrack\MineColorTrack.exe'
           $lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'MineColorTrack.lnk'
@@ -73,6 +73,35 @@ jobs:
           "Installed OK: $exe"
           "Desktop shortcut: $lnk"
           "Installer size: {0:N1} MB" -f ($setup.Length / 1MB)
+
+      - name: Test the mct command-line tool (PATH, offline edits, live control of the running app)
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs\MineColorTrack'
+          $mct = Join-Path $dir 'mct.exe'
+          if (([Environment]::GetEnvironmentVariable('Path', 'User') -split ';') -notcontains $dir) { throw "mct folder not added to PATH" }
+          & $mct --version
+          $r = & $mct set capture.fps 90 | ConvertFrom-Json
+          if ($r.value -ne 90 -or $r.applied_live) { throw "offline set failed: $r" }
+          & $mct schema | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "schema failed" }
+          Start-Process (Join-Path $dir 'MineColorTrack.exe')
+          $running = $false
+          for ($i = 0; $i -lt 60 -and -not $running; $i++) { Start-Sleep -Milliseconds 500; $running = (& $mct status | ConvertFrom-Json).running }
+          if (-not $running) { throw "the app did not answer mct" }
+          $r = & $mct set outline.thickness 9 | ConvertFrom-Json
+          if (-not $r.applied_live) { throw "live set failed" }
+          if ((& $mct get outline.thickness | ConvertFrom-Json).value -ne 9) { throw "live get failed" }
+          & $mct target add Test --color "#50C84B" | Out-Null
+          & $mct start | Out-Null
+          Start-Sleep 3
+          & $mct status
+          & $mct windows
+          & $mct quit | Out-Null
+          Start-Sleep 3
+          if ((& $mct status | ConvertFrom-Json).running) { throw "the app did not quit" }
+          if ((Get-Content (Join-Path $env:APPDATA 'MineColorTrack\config.json') -Raw | ConvertFrom-Json).capture.fps -ne 90) { throw "settings not kept" }
+          'mct OK'
 
       - name: Test the uninstaller (Start menu shortcuts, silent uninstall)
         shell: pwsh
@@ -92,6 +121,7 @@ jobs:
           if (Test-Path (Join-Path ([Environment]::GetFolderPath('Desktop')) 'MineColorTrack.lnk')) { throw 'Desktop shortcut still present' }
           if (Test-Path $uninstLnk) { throw 'Start menu shortcuts still present' }
           if (!(Test-Path (Join-Path $settings 'config.json'))) { throw 'A silent uninstall should keep the settings' }
+          if (([Environment]::GetEnvironmentVariable('Path', 'User') -split ';') -contains $dir) { throw 'mct folder still in PATH after uninstall' }
           'Uninstall OK: program and shortcuts removed; settings kept (silent default answer is No)'
 
       - uses: actions/upload-artifact@v4

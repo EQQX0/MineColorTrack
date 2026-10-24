@@ -22,6 +22,15 @@ Requirements: Windows 10 (version 2004 or newer) or Windows 11, 64-bit. Nothing 
 
 Every setting has a tooltip, and the **Help** page explains everything with pictures.
 
+## What's new in 1.5.0
+
+- **Command line for scripts and AI agents**: `mct.exe` controls everything (settings, profiles, colour targets,
+  AI model and entities, what to watch, start/stop, screenshots, the labelling dataset) and prints JSON.
+  Changes apply live while MineColorTrack is open. `mct guide` and `mct schema` explain everything.
+- Setup can add `mct` to PATH (ticked by default); uninstalling removes it again.
+- Settings > **Copy instructions for an AI agent**.
+- Opening MineColorTrack while it is already running brings the open window forward instead of a second copy.
+
 ## What's new in 1.4.0
 
 - **Faster screen capture**: Windows Desktop Duplication, made for high frame rates (Watch > Performance >

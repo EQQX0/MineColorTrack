@@ -154,6 +154,67 @@ def default_config():
     return cfg
 
 
+# Allowed numeric ranges, (class name, field) -> (min, max). Shared by the control panel and the `mct` tool.
+LIMITS = {
+    ("CaptureCfg", "fps"): (5, 120), ("CaptureCfg", "scale"): (20, 100), ("CaptureCfg", "monitor"): (1, 16),
+    ("DisplayCfg", "ui_font_pt"): (9, 24),
+    ("OutlineCfg", "thickness"): (1, 24), ("OutlineCfg", "padding"): (0, 60),
+    ("TrackingCfg", "smoothing"): (0, 95), ("TrackingCfg", "hold_frames"): (0, 90),
+    ("TrackingCfg", "merge_distance"): (0, 80), ("TrackingCfg", "noise_filter"): (0, 6),
+    ("DetectionCfg", "confidence"): (5, 95),
+    ("Target", "hue_tol"): (1, 90), ("Target", "sat_min"): (0, 100), ("Target", "sat_max"): (0, 100),
+    ("Target", "val_min"): (0, 100), ("Target", "val_max"): (0, 100),
+    ("Target", "min_area"): (1, 200000), ("Target", "max_area"): (0, 2000000),
+}
+COLOUR_FIELDS = {"color", "outline_color", "crosshair_color"}
+
+
+def convert(obj, attr, text):
+    """Turn a text value into the right type for obj.attr, enforcing choices, limits and colour format."""
+    import re
+    cls = type(obj).__name__
+    cur = getattr(obj, attr)
+    if (cls, attr) in CHOICES:
+        allowed = [c[0] for c in CHOICES[(cls, attr)]]
+        if text not in allowed:
+            raise ValueError("%s must be one of: %s" % (attr, ", ".join(allowed)))
+        return text
+    if isinstance(cur, bool):
+        low = str(text).strip().lower()
+        if low in ("1", "true", "yes", "on"):
+            return True
+        if low in ("0", "false", "no", "off"):
+            return False
+        raise ValueError("%s must be true or false" % attr)
+    if isinstance(cur, (int, float)):
+        try:
+            val = type(cur)(float(text)) if isinstance(cur, int) else float(text)
+        except ValueError:
+            raise ValueError("%s must be a number" % attr)
+        lo, hi = LIMITS.get((cls, attr), (None, None))
+        if lo is not None and not lo <= val <= hi:
+            raise ValueError("%s must be between %s and %s" % (attr, lo, hi))
+        return val
+    if isinstance(cur, list):
+        parts = [int(float(v)) for v in str(text).replace(",", " ").split()]
+        if attr == "region" and len(parts) != 4:
+            raise ValueError("region needs 4 numbers: x y width height")
+        return parts
+    text = str(text)
+    if attr in COLOUR_FIELDS:
+        if not re.fullmatch(r"#?[0-9A-Fa-f]{6}", text.strip()):
+            raise ValueError("%s must be a colour like #FF00FF" % attr)
+        return "#" + text.strip().lstrip("#").upper()
+    return text
+
+
+def replace_in_place(cfg, new):
+    """Copy every setting from `new` into `cfg`, keeping the same object (the running app holds references)."""
+    for f in fields(cfg):
+        setattr(cfg, f.name, getattr(new, f.name))
+    cfg.profile  # normalise active_profile
+
+
 def _legacy_presets():
     """Profiles that versions 1.0 to 1.1.x created automatically. Only used to clean up old settings files."""
     def t(name, color, outline, hue_tol, sat_min, val_min, min_area=40):
@@ -240,6 +301,11 @@ def load(path):
             data = json.load(fh)
     except (OSError, ValueError):
         return default_config()
+    return from_dict(data)
+
+
+def from_dict(data):
+    """Settings from a dict (a settings file, or the running app's settings sent to the `mct` tool)."""
     cfg = _fill(AppConfig(), data)
     old_version = data.get("version", 1) if isinstance(data, dict) else 1
     if not isinstance(old_version, int) or old_version < 2:

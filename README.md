@@ -69,6 +69,35 @@ The app runs models with ONNX Runtime (DirectML, so most graphics cards work). T
 [Ultralytics YOLO](https://docs.ultralytics.com), which is AGPL-3.0; Ultralytics considers models trained with
 it to fall under that licence too. That is fine for personal use; check the licence before sharing models.
 
+## Command line and AI agents (`mct`)
+
+`mct.exe` is installed next to MineColorTrack (and added to PATH if you keep that option ticked in Setup).
+It controls everything in the control panel; every command prints JSON, and changes apply live while the
+app is open (otherwise the settings file is edited). Settings > **Copy instructions for an AI agent** copies a
+ready-made explanation to paste into an agent.
+
+```
+mct guide                                 # all commands, with examples
+mct schema                                # every setting: type, allowed values, limits, explanation
+mct status                                # running? fps, targets in view, capture method, AI device
+mct get capture.fps
+mct set capture.fps 120
+mct set outline.thickness 8 --profile "Night"
+mct windows                               # open windows
+mct watch window --title "PS Remote Play" --exe RemotePlay.exe
+mct profile new Night
+mct target pick Creeper shot.png 384 140  # colour from a screenshot pixel, with suggested ranges
+mct target set Creeper min_area 200
+mct detect shot.png --out marked.png      # what the current profile would outline
+mct model load C:\models\minecolortrack_model.onnx
+mct entity set player outline_color "#FF00FF"
+mct start | stop | toggle-outline | screenshot | show | quit
+mct dataset info | import roboflow.zip | export training.zip
+```
+
+Errors are JSON on stderr with exit code 1. The connection to the running app is local and protected by a
+random key stored next to the settings file, so only your Windows user can use it.
+
 ## What you can set
 
 | Page | Options |
@@ -124,9 +153,11 @@ The AI pipeline is tested end to end with `MCT_E2E=1 python -m pytest tests/test
 `ultralytics`): it labels synthetic screenshots, exports the zip, runs the notebook's own code, and checks the
 exported model with the app's detector. `packaging/make_notebook.py` writes the notebook.
 
+From source, the command-line tool is `python mct.py ...`.
+
 Code map: `colorassist/vision.py` colour detection and tracking (numpy/OpenCV, no GUI), `detector.py` AI model
 runtime, `dataset.py` labelled screenshots, import and export, `labeler.py` labelling tool, `engine.py` capture
 thread, `view.py` overlay/mirror drawing, `panel.py` and `ui.py` control panel and themes,
-`winplat.py` Windows API calls (window list, capture exclusion, hotkeys), `help_text.py` all tooltips and
+`winplat.py` Windows API calls (window list, capture exclusion, hotkeys), `capture.py` screen capture, `cli.py` and `ipc.py` the `mct` tool and its connection to the app, `help_text.py` all tooltips and
 Help page text, `app.py` wiring, tray, self-test. Help pictures are rendered by
 `packaging/make_help_images.py`.

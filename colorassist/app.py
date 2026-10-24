@@ -1,5 +1,7 @@
 """Wires the control panel, capture engine and assist window together."""
 import argparse
+from dataclasses import asdict
+import threading
 import json
 import os
 import sys
@@ -8,11 +10,11 @@ import time
 import traceback
 
 import numpy as np
-from PyQt6.QtCore import QAbstractNativeEventFilter, QTimer
+from PyQt6.QtCore import QAbstractNativeEventFilter, QObject, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QColor, QIcon
 from PyQt6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
 
-from . import APP_NAME, __version__, capture, config, dataset, detector, engine, ui, vision, winplat
+from . import APP_NAME, __version__, capture, config, dataset, detector, engine, ipc, ui, vision, winplat
 from .panel import PAGES, Panel
 from .pickers import ColourPicker, RegionPicker
 from .view import AssistView
@@ -43,8 +45,13 @@ class _HotkeyFilter(QAbstractNativeEventFilter):
         return False, 0
 
 
+class _Bridge(QObject):
+    """Hands command-line requests from the connection thread to the GUI thread."""
+    call = pyqtSignal(object)
+
+
 class Controller:
-    def __init__(self, app, cfg, path, interactive=True):
+    def __init__(self, app, cfg, path, interactive=True, start_now=False):
         self.app, self.cfg, self.path = app, cfg, path
         self.interactive = interactive
         self.engine = engine.Engine(cfg)
@@ -87,7 +94,17 @@ class Controller:
         if interactive:
             p.show()
         self.register_hotkeys()
-        if cfg.display.start_on_launch and interactive:
+        self.last_status = {}
+        self._bridge = _Bridge()
+        self._bridge.call.connect(self._run_command)
+        self.ipc = None
+        if interactive:
+            self.ipc = ipc.Server(path, self._command_from_cli)
+            try:
+                self.ipc.start()
+            except OSError:
+                self.ipc = None          # another copy owns the connection; the CLI talks to that one
+        if (cfg.display.start_on_launch or start_now) and interactive:
             QTimer.singleShot(300, self.start)
 
     # ---------- tray ----------
@@ -220,6 +237,8 @@ class Controller:
         self.view.message = ""
         self.view.set_result(res)
         self.panel.show_result(res)
+        self.last_status = {"fps": round(res.fps, 1), "targets_in_view": res.count, "capture": res.capture,
+                            "ai_device": res.ai_device, "ai_problem": res.ai_error, "area": list(res.rect)}
 
     def on_status(self, text):
         if not self.engine.running and not text.startswith("Capture stopped"):
@@ -285,19 +304,20 @@ class Controller:
         if frame is None:
             if self.tray:
                 self.tray.showMessage(APP_NAME, msg or "Nothing to capture.", QSystemTrayIcon.MessageIcon.Warning, 3000)
-            return
+            return {"saved": False, "problem": msg or "Nothing to capture."}
         try:
             ds = dataset.Dataset(self.panel.dataset_root())
             stem = ds.add_image(frame)
         except OSError as exc:
             if self.tray:
                 self.tray.showMessage(APP_NAME, "Could not save: %s" % exc, QSystemTrayIcon.MessageIcon.Warning, 3000)
-            return
+            return {"saved": False, "problem": str(exc)}
         if self.labeler is not None and self.labeler.isVisible():
             self.labeler.add_captured(stem)
         if self.tray:
             self.tray.showMessage(APP_NAME, "Screenshot saved for labelling (%d in total)." % len(ds.images()),
                                   QSystemTrayIcon.MessageIcon.NoIcon, 1500)
+        return {"saved": True, "file": ds.image_path(stem), "total": len(ds.images())}
 
     def open_labeler(self):
         from .labeler import Labeler
@@ -369,7 +389,86 @@ class Controller:
         except OSError as exc:
             self.panel.set_saved("Could not save: %s" % exc)
 
+    # ---------- command-line control (mct) ----------
+    def _command_from_cli(self, cmd, args):
+        """Runs on the connection thread: pass the request to the GUI thread and wait for the answer."""
+        job = {"cmd": cmd, "args": args, "done": threading.Event()}
+        self._bridge.call.emit(job)
+        if not job["done"].wait(20):
+            raise TimeoutError("MineColorTrack is busy.")
+        if "error" in job:
+            raise RuntimeError(job["error"])
+        return job["result"]
+
+    def _run_command(self, job):
+        try:
+            job["result"] = self.handle_command(job["cmd"], job["args"])
+        except Exception as exc:
+            job["error"] = str(exc)
+        finally:
+            job["done"].set()
+
+    def handle_command(self, cmd, args):
+        if cmd == "ping":
+            return {"version": __version__, "pid": os.getpid()}
+        if cmd == "get_config":
+            return asdict(self.cfg)
+        if cmd == "set_config":
+            return self.apply_settings(args)
+        if cmd != "action":
+            raise ValueError("Unknown command %r" % cmd)
+        name = args.get("name")
+        if name == "status":
+            info = {"watching_active": self.engine.running, "active_profile": self.cfg.active_profile,
+                    "watching": self.panel.watch_text(), "outline_enabled": self.cfg.profile.outline.enabled,
+                    "display": self.cfg.display.mode}
+            if self.engine.running:
+                info.update(self.last_status)
+            return info
+        if name == "start":
+            self.start()
+        elif name == "stop":
+            self.stop()
+        elif name == "toggle_outline":
+            prof = self.cfg.profile
+            prof.outline.enabled = not prof.outline.enabled
+            self.panel.refresh_all()
+            self._save_timer.start()
+            return {"outline_enabled": prof.outline.enabled}
+        elif name == "screenshot":
+            return self.save_screenshot()
+        elif name == "show":
+            self.show_panel()
+        elif name == "quit":
+            QTimer.singleShot(150, self.quit)
+            return {"quitting": True}
+        else:
+            raise ValueError("Unknown action %r" % name)
+        return {"ok": True, "watching_active": self.engine.running}
+
+    def apply_settings(self, data):
+        """Replace all settings with ones sent by `mct`, and update everything that depends on them."""
+        new = config.from_dict(data)
+        before = (self.cfg.display.mode, self.cfg.display.mirror_on_top, self.cfg.display.theme,
+                  self.cfg.display.ui_font_pt, asdict(self.cfg.hotkeys), self.cfg.active_profile,
+                  asdict(self.cfg.capture))
+        config.replace_in_place(self.cfg, new)
+        d = self.cfg.display
+        self.panel._reload_profiles()
+        if (d.theme, d.ui_font_pt) != before[2:4]:
+            self.apply_theme()
+        if asdict(self.cfg.hotkeys) != before[4]:
+            self.register_hotkeys()
+        if (d.mode, d.mirror_on_top) != before[0:2]:
+            self.rebuild_view()
+        if self.cfg.active_profile != before[5] or asdict(self.cfg.capture) != before[6]:
+            self.engine.reset_tracking()
+        self.save()
+        return {"ok": True}
+
     def quit(self):
+        if self.ipc:
+            self.ipc.stop()
         self._save_timer.stop()
         self.engine.stop()
         try:
@@ -525,10 +624,19 @@ def main(argv=None):
     ap.add_argument("--reset", action="store_true", help="ignore the saved settings and start from defaults")
     ap.add_argument("--selftest", metavar="REPORT.json", help="run non-interactive checks and exit")
     ap.add_argument("--selftest-model", metavar="MODEL.onnx", help="also load and run this AI model in the self-test")
+    ap.add_argument("--start", action="store_true", help="start watching right away")
     args = ap.parse_args(argv)
     winplat.set_app_id("EQQX0.%s" % APP_NAME)
     if args.selftest:
         return run_selftest(args.selftest, args.selftest_model)
+    if ipc.is_running(args.config):                 # already open: bring it forward instead of a second copy
+        try:
+            ipc.request(args.config, "action", {"name": "show"})
+            if args.start:
+                ipc.request(args.config, "action", {"name": "start"})
+        except Exception:
+            pass
+        return 0
     winplat.hold_running_mutex()
     app = QApplication(sys.argv[:1])
     app.setApplicationName(APP_NAME)
@@ -537,6 +645,6 @@ def main(argv=None):
     app.setQuitOnLastWindowClosed(False)
     _install_error_log(args.config)
     cfg = config.default_config() if args.reset else config.load(args.config)
-    ctl = Controller(app, cfg, args.config)
+    ctl = Controller(app, cfg, args.config, start_now=args.start)
     app._controller = ctl  # keep alive
     return app.exec()

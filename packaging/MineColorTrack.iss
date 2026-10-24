@@ -32,12 +32,14 @@ ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
 ; The app holds this mutex while running, so Setup and the uninstaller ask you to close it first.
 AppMutex=MineColorTrackRunning
+ChangesEnvironment=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
+Name: "addtopath"; Description: "Add the mct command-line tool to PATH (for scripts and AI agents)"; GroupDescription: "Command line:"
 
 [Files]
 Source: "..\dist\MineColorTrack\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -51,16 +53,48 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"
 Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"; Comment: "Remove {#MyAppName} from this PC"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: desktopicon
 
+[Registry]
+Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; Tasks: addtopath; Check: NotInPath(ExpandConstant('{app}'))
+
 [Run]
 Filename: "{app}\{#MyAppExe}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
 
 [Code]
+function NotInPath(Dir: String): Boolean;
+var
+  Current: String;
+begin
+  if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', Current) then
+    Current := '';
+  Result := Pos(';' + Uppercase(Dir) + ';', ';' + Uppercase(Current) + ';') = 0;
+end;
+
+// Take our folder out of the user's PATH again on uninstall.
+procedure RemoveFromPath(Dir: String);
+var
+  Current: String;
+  P: Integer;
+begin
+  if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', Current) then
+    exit;
+  Current := ';' + Current + ';';
+  P := Pos(';' + Uppercase(Dir) + ';', Uppercase(Current));
+  if P > 0 then
+  begin
+    Delete(Current, P, Length(Dir) + 1);
+    Current := Copy(Current, 2, Length(Current) - 2);
+    RegWriteExpandStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', Current);
+  end;
+end;
+
 // After the program files are removed, offer to delete the user's settings and profiles too.
 // Silent uninstalls (/SUPPRESSMSGBOXES) keep them.
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   SettingsDir: String;
 begin
+  if CurUninstallStep = usUninstall then
+    RemoveFromPath(ExpandConstant('{app}'));
   if CurUninstallStep = usPostUninstall then
   begin
     SettingsDir := ExpandConstant('{userappdata}\{#MyAppName}');
