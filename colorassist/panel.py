@@ -383,7 +383,8 @@ class Panel(QMainWindow):
         c, cl = card("Performance")
         self.perf_card = c
         f = self._form(cl)
-        self._row(f, "capture.fps", self._bind("slider", cap, "fps", R, "capture.fps", lo=5, hi=60))
+        self.fps_slider = self._bind("slider", cap, "fps", R, "capture.fps", lo=5, hi=120)
+        self._row(f, "capture.fps", self.fps_slider)
         self._row(f, "capture.scale", self._bind("slider", cap, "scale", R, "capture.scale", lo=20, hi=100,
                                                  step=5, suffix=" %"))
         v.addWidget(c)

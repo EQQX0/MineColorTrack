@@ -39,8 +39,10 @@ TIPS = {
     "region": ("Region", "The screen area watched when Watch is set to part of the screen."),
     "select_region": ("", "Shows a still picture of the chosen monitor.\n"
                           "Drag a box around the game picture and release."),
-    "capture.fps": ("Frames per second", "How often the screen is checked. Higher follows fast mobs more closely "
-                                         "but uses more CPU.\n30 is a good start."),
+    "capture.fps": ("Frames per second", "How often the screen is checked, up to 120. Higher follows fast mobs "
+                                         "more closely but uses more CPU.\n30 is a good start; above 60 only helps "
+                                         "on a 120 Hz screen with a fast PC.\nThe speed actually reached is shown "
+                                         "on the Home page while running."),
     "capture.scale": ("Processing resolution", "Size at which each frame is analysed. 100% finds the smallest, "
                                                "farthest targets;\nlower values are faster. Outlines are always "
                                                "drawn at full size."),

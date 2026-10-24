@@ -80,3 +80,10 @@ def test_add_target_starts_off_and_asks_for_colour(panel):
     assert len(panel.cfg.profile.targets) == n + 1 and not t.enabled and asked
     panel.apply_picked_colour(("#123456", 12, 30, 30))
     assert t.enabled and t.color == "#123456"
+
+
+def test_fps_goes_to_120(panel):
+    assert panel.fps_slider.slider.maximum() == 120
+    panel.fps_slider.setValue(120)
+    panel.fps_slider._from_spin(120)
+    assert panel.cfg.capture.fps == 120
