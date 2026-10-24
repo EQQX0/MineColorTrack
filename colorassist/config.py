@@ -37,31 +37,6 @@ class OutlineCfg:
 
 
 @dataclass
-class ContrastCfg:
-    enabled: bool = False
-    dim: int = 65               # percent darkening of everything that is not a target
-    greyscale: bool = True
-    fill: str = "solid"
-    fill_color: str = "#FFEB00"
-    grow: int = 3               # px to thicken targets by
-    edges: bool = True
-
-
-@dataclass
-class MagnifierCfg:
-    enabled: bool = False
-    zoom: float = 3.0
-    size: int = 260
-    shape: str = "circle"
-    position: str = "top-right"
-    source: str = "smallest"
-    contrast: int = 50
-    pixelated: bool = True
-    border_color: str = "#FFEB00"
-    link_line: bool = True
-
-
-@dataclass
 class TrackingCfg:
     smoothing: int = 50         # percent, higher = steadier but laggier boxes
     hold_frames: int = 6        # keep a box this many frames after it is lost
@@ -73,15 +48,14 @@ class TrackingCfg:
 class Profile:
     targets: list = field(default_factory=list)
     outline: OutlineCfg = field(default_factory=OutlineCfg)
-    contrast: ContrastCfg = field(default_factory=ContrastCfg)
-    magnifier: MagnifierCfg = field(default_factory=MagnifierCfg)
     tracking: TrackingCfg = field(default_factory=TrackingCfg)
 
 
 @dataclass
 class CaptureCfg:
-    source: str = "window"
-    window_title: str = "PS Remote Play"
+    source: str = "monitor"
+    window_title: str = ""      # text the window title contains
+    window_exe: str = ""        # program file name, e.g. "RemotePlay.exe" (survives title changes)
     monitor: int = 1
     region: list = field(default_factory=lambda: [100, 100, 1280, 720])
     fps: int = 30
@@ -105,8 +79,6 @@ class HotkeysCfg:
     toggle_overlay: str = "Ctrl+Alt+A"
     next_profile: str = "Ctrl+Alt+P"
     toggle_outline: str = "Ctrl+Alt+O"
-    toggle_contrast: str = "Ctrl+Alt+C"
-    toggle_magnifier: str = "Ctrl+Alt+M"
 
 
 @dataclass
@@ -130,17 +102,9 @@ class AppConfig:
 CHOICES = {
     ("OutlineCfg", "style"): [("box", "Box"), ("corners", "Corner brackets"), ("ellipse", "Ellipse")],
     ("OutlineCfg", "marker"): [("arrow", "Arrow above"), ("dot", "Dot above"), ("none", "None")],
-    ("ContrastCfg", "fill"): [("solid", "Solid colour"), ("original", "Original colours, boosted")],
-    ("MagnifierCfg", "shape"): [("circle", "Circle"), ("square", "Square")],
-    ("MagnifierCfg", "position"): [("top-right", "Top right"), ("top-left", "Top left"),
-                                   ("bottom-right", "Bottom right"), ("bottom-left", "Bottom left"),
-                                   ("follow", "Next to the target")],
-    ("MagnifierCfg", "source"): [("smallest", "Smallest (usually farthest) target"),
-                                 ("largest", "Largest (usually nearest) target"),
-                                 ("nearest-centre", "Target nearest the screen centre"),
-                                 ("centre", "Screen centre (always on)")],
-    ("CaptureCfg", "source"): [("window", "PS Remote Play window (follows it)"),
-                               ("monitor", "Whole monitor"), ("region", "Custom region")],
+    ("CaptureCfg", "source"): [("window", "An open window (follows it when it moves)"),
+                               ("monitor", "A whole monitor"),
+                               ("region", "Part of the screen (drag a box)")],
     ("DisplayCfg", "mode"): [("overlay", "Overlay on top of the game"),
                              ("mirror", "Separate mirror window")],
     ("DisplayCfg", "theme"): [("dark", "Dark"), ("light", "Light"),
@@ -166,16 +130,16 @@ def default_profiles():
         _preset_target("Zombie shirt", "#00A8A8", "#FF6A00", hue_tol=10, sat_min=55, val_min=35),
         _preset_target("Spider eyes", "#E01010", "#00FFFF", hue_tol=10, sat_min=60, val_min=45, min_area=6),
     ])
-    low_vision = copy.deepcopy(hostiles)
-    low_vision.contrast.enabled = True
-    low_vision.magnifier.enabled = True
-    low_vision.outline.thickness = 6
+    strong = copy.deepcopy(hostiles)
+    strong.outline.thickness = 8
+    strong.outline.padding = 10
+    strong.outline.labels = True
     return {
         "Minecraft: creepers": creeper,
         "Minecraft: zombies": zombie,
         "Minecraft: night eyes (spider, enderman)": eyes,
         "Minecraft: common hostiles": hostiles,
-        "Minecraft: strong low-vision": low_vision,
+        "Minecraft: extra-bold outlines": strong,
     }
 
 

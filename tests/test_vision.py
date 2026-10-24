@@ -60,29 +60,6 @@ def test_tracker_smooths_and_holds():
     assert len(tr.update([], 50, 2)) == 0       # dropped
 
 
-def test_effects_shapes():
-    frame = make_scene()
-    t = creeper_target()
-    blobs, small, mask = vision.detect(frame, [t], config.TrackingCfg(), 0.5)
-    for fill in ("solid", "original"):
-        out = vision.high_contrast(small, mask, config.ContrastCfg(fill=fill), 0.5)
-        assert out.shape == small.shape
-    hc = vision.high_contrast(small, mask, config.ContrastCfg(edges=False, grow=0), 0.5)
-    assert (hc[mask > 0] == vision.hex_to_bgr("#FFEB00")).all()
-    lens = vision.magnify(frame, 5, 5, 3.0, 240, 50, True)   # near the corner: padded, no crash
-    assert lens.shape == (240, 240, 3)
-
-
-def test_pick_focus_choices():
-    tr = vision.Tracker()
-    tracks = tr.update([vision.Blob(0, 150, 166, 12, 24, 200), vision.Blob(0, 372, 132, 24, 48, 900)], 0, 0)
-    assert vision.pick_focus(tracks, 640, 360, "smallest")[0] == 156
-    assert vision.pick_focus(tracks, 640, 360, "largest")[0] == 384
-    assert vision.pick_focus(tracks, 640, 360, "nearest-centre")[0] == 384
-    assert vision.pick_focus([], 640, 360, "centre") == (320, 180)
-    assert vision.pick_focus([], 640, 360, "smallest") is None
-
-
 def test_patch_stats_suggests_working_tolerances():
     frame = make_scene()
     for x, y in ((384, 140), (378, 160), (153, 180)):     # incl. a click right next to the dark face
@@ -105,11 +82,12 @@ def test_config_roundtrip_and_bad_values(tmp_path):
     data = json.loads(p.read_text())
     data["capture"]["fps"] = "abc"
     data["display"]["mode"] = "nonsense"
-    data["profiles"][cfg.active_profile]["magnifier"]["zoom"] = 4
+    data["profiles"][cfg.active_profile]["outline"]["thickness"] = 9
+    data["profiles"][cfg.active_profile]["magnifier"] = {"zoom": 4}     # old setting from 1.0: ignored
     p.write_text(json.dumps(data))
     back = config.load(str(p))
     assert back.capture.fps == 30 and back.display.mode == "overlay"
-    assert back.profile.magnifier.zoom == 4.0
+    assert back.profile.outline.thickness == 9
     p.write_text("{not json")
     assert config.load(str(p)).profiles
 

@@ -17,7 +17,7 @@ from .panel import PAGES, Panel
 from .pickers import ColourPicker, RegionPicker
 from .view import AssistView
 
-HOTKEY_ACTIONS = ["toggle_overlay", "next_profile", "toggle_outline", "toggle_contrast", "toggle_magnifier"]
+HOTKEY_ACTIONS = ["toggle_overlay", "next_profile", "toggle_outline"]
 ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
 
@@ -68,6 +68,7 @@ class Controller:
         p.settingsChanged.connect(self._save_timer.start)
         p.displayModeChanged.connect(self.rebuild_view)
         p.profileChanged.connect(self.engine.reset_tracking)
+        p.watchChanged.connect(self.engine.reset_tracking)
         p.previewChanged.connect(lambda i: setattr(self.engine, "preview_target", i))
         p.pickColourRequested.connect(self.pick_colour)
         p.pickRegionRequested.connect(self.pick_region)
@@ -302,10 +303,6 @@ class Controller:
             return
         if action == "toggle_outline":
             prof.outline.enabled = not prof.outline.enabled
-        elif action == "toggle_contrast":
-            prof.contrast.enabled = not prof.contrast.enabled
-        elif action == "toggle_magnifier":
-            prof.magnifier.enabled = not prof.magnifier.enabled
         self.panel.refresh_all()
         self._save_timer.start()
 
@@ -391,10 +388,10 @@ def run_selftest(out_path):
     def engine_check():
         frame = np.full((360, 640, 3), 90, np.uint8)
         frame[100:200, 300:340] = vision.hex_to_bgr("#50C84B")
-        cfg.profile.contrast.enabled = cfg.profile.magnifier.enabled = True
+        holder["ctl"].engine.want_frame = True
         res = holder["ctl"].engine.process(frame, (0, 0, 640, 360))
-        assert res.count == 1 and res.contrast_img is not None and res.lens_img is not None
-        return "processed one frame with all modes"
+        assert res.count == 1 and res.frame_img is not None
+        return "processed one frame"
 
     def overlay_check():
         ctl = holder["ctl"]
@@ -414,6 +411,7 @@ def run_selftest(out_path):
     check("screen_grab", lambda: list(engine.grab_monitor(1)[0].shape), False)
     check("overlay_capture_exclusion", overlay_check, False)
     check("hotkeys", lambda: holder["ctl"].panel.hotkey_status.text(), False)
+    check("window_list", lambda: ["%s | %s" % (w["title"][:40], w["exe"]) for w in winplat.list_windows()][:8], False)
     check("window_search", lambda: str(winplat.find_window("no-such-window-%d" % os.getpid())), False)
     check("config_save", lambda: (config.save(cfg, path), os.path.getsize(path))[1], True)
     report["ok"] = ok[0]

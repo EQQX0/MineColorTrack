@@ -1,8 +1,8 @@
 # MineColorTrack
 
-A low-vision helper for games streamed with PS Remote Play on Windows, built with Minecraft in mind.
-It watches the Remote Play picture, finds things of a chosen colour (for example creepers) and makes
-them easier to see. You can use outlines, a high-contrast view, a magnifier lens, or any mix of the three.
+A low-vision helper for Windows, built with Minecraft in mind. It watches any open window (PS Remote Play,
+the Xbox app, a capture-card viewer, a PC game) or any monitor, finds things of a chosen colour (for example
+creepers) and draws clear outlines around them.
 
 It only draws on screen. It never sends controller, mouse or keyboard input to the game.
 
@@ -22,35 +22,36 @@ Requirements: 64-bit Windows 10 version 2004 or newer, or Windows 11. Nothing el
 
 ## Quick start for Minecraft
 
-1. Open PS Remote Play and start Minecraft. Keep the Remote Play window visible (not minimised).
-2. Open MineColorTrack from the desktop shortcut, pick a profile such as "Minecraft: creepers"
-   and press **Start**.
+1. Start your game (for example Minecraft through PS Remote Play). Keep its window visible (not minimised).
+2. Open MineColorTrack from the desktop shortcut. On **Watch**, pick the game's window from the list
+   (or a monitor), choose a profile such as "Minecraft: creepers" on **Home** and press **Start**.
 3. Go to **Targets**, press **Pick colour from the game...** and click on a creeper.
    The live preview shows in white what will be highlighted.
 4. If grass or leaves light up too, raise **Brightness min** and **Saturation min** a little,
    lower **Hue tolerance**, or raise **Minimum size**. If the creeper is only partly white, do the opposite.
-5. Click back on the Remote Play window so it gets your controller input again.
+5. Click back into your game so it gets your controller input again.
+
+Hover over any setting for an explanation, or open the **Help** page (also the "? Help" button on each page)
+for illustrated instructions.
 
 Settings save automatically. Creepers, grass and leaves are similar greens in Minecraft, so step 4
 matters. Night, caves and rain change colours, so a separate profile for each (Home > Manage profiles >
 Duplicate) works better than one compromise.
 
 ![Overlay with outlines](docs/overlay_outline.png)
-![Mirror window with high contrast and magnifier](docs/mirror_contrast_magnifier.png)
 
 ## What you can set
 
 | Page | Options |
 |---|---|
-| Home | Start/stop, profile, quick switches for each assist mode and each target, overlay or mirror window, crosshair |
+| Home | Start/stop, profile, outline switch, a switch per target, what is being watched, overlay or mirror window, crosshair |
+| Watch | Any open window (picked from a list, followed when it moves; matched by title and program), any monitor, or a dragged screen area; frames per second; processing resolution |
 | Targets | Any number of colours per profile with name, hue tolerance, saturation and brightness range, size limits and outline colour; on-screen colour picker that suggests tolerances; live preview |
 | Outline | Box, corner brackets or ellipse; thickness; spacing; black backing line; per-target or single colour; arrow or dot marker; names; blinking; dashed "last seen" outline |
-| High contrast | Dim the rest (0 to 100 %), turn it grey, paint targets a solid colour or boost their real colours, thicken them, white edge |
-| Magnifier | Zoom 1.5x to 10x, size, circle or square, corner or next-to-target placement, which target to follow, extra contrast, sharp pixels, link line |
-| Capture | Follow the PS Remote Play window, a whole monitor, or a dragged region; frames per second; processing resolution |
 | Tracking | Smoothing, how long a lost target stays marked, joining pieces into one target, speck filter |
-| Hotkeys | Global hotkeys that work while the game has focus (defaults: Ctrl+Alt+A start/stop, Ctrl+Alt+P next profile, Ctrl+Alt+O outline, Ctrl+Alt+C high contrast, Ctrl+Alt+M magnifier) |
+| Hotkeys | Global hotkeys that work while the game has focus (defaults: Ctrl+Alt+A start/stop, Ctrl+Alt+P next profile, Ctrl+Alt+O outline on/off) |
 | Settings | Dark, light or high-contrast (black and yellow) theme; text size; start on launch; keep running in the system tray |
+| Help | Illustrated explanations of every page, tuning colours, overlay vs. mirror, troubleshooting |
 
 Five Minecraft presets are included (creepers, zombies, night eyes, common hostiles, strong low-vision).
 Their colours are starting points only; re-pick them in your own game.
@@ -58,20 +59,20 @@ Settings file: `%APPDATA%\MineColorTrack\config.json`. Crash details, if any: `e
 
 ## Overlay vs. mirror window
 
-- **Overlay** sits exactly on top of the Remote Play picture, follows the window and is click-through.
+- **Overlay** sits exactly on top of what you watch, follows a watched window and is click-through.
   Windows has to hide it from screen capture so the program never detects its own drawings
   (Windows 10 version 2004 or newer). MineColorTrack tests this when it starts and switches to the
   mirror window if it fails.
 - **Mirror** shows the processed picture in its own window, for example on a second monitor.
-  Keep Remote Play visible somewhere (it can be small, but not minimised or covered).
+  Keep the game itself visible somewhere (it can be small, but not minimised or covered).
 
 ## Limits
 
 - Colour matching only. It cannot tell a creeper from green blocks of the same shade; tuning and
   size limits are how you separate them.
 - Stream compression and motion blur make outlines shimmer a little. Raise **Smoothing** if it bothers you.
-- If Remote Play runs in exclusive full screen, overlays may not show on top. Use windowed or
-  maximised Remote Play, or the mirror window.
+- Games in exclusive full screen may block capture and overlays. Use windowed or borderless mode,
+  or the mirror window.
 
 ## For developers
 
@@ -90,4 +91,6 @@ and finally the GitHub release.
 
 Code map: `colorassist/vision.py` detection and effects (numpy/OpenCV, no GUI), `engine.py` capture
 thread, `view.py` overlay/mirror drawing, `panel.py` and `ui.py` control panel and themes,
-`winplat.py` Windows API calls, `app.py` wiring, tray, self-test.
+`winplat.py` Windows API calls (window list, capture exclusion, hotkeys), `help_text.py` all tooltips and
+Help page text, `app.py` wiring, tray, self-test. Help pictures are rendered by
+`packaging/make_help_images.py`.

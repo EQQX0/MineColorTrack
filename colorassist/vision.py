@@ -1,4 +1,4 @@
-"""Colour detection, box tracking and the image effects (high contrast, magnifier).
+"""Colour detection and box tracking.
 
 Everything here is plain numpy/OpenCV so it can be tested without a screen.
 """
@@ -162,66 +162,6 @@ class Tracker:
                 self.tracks.append(Track(self._next, b))
                 self._next += 1
         return list(self.tracks)
-
-
-def high_contrast(small_bgr, mask, cfg, scale):
-    """Dim (and grey) everything, then paint target pixels bright."""
-    keep = max(0.0, 1.0 - cfg.dim / 100.0)
-    if cfg.greyscale:
-        bg = cv2.cvtColor(cv2.cvtColor(small_bgr, cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR)
-    else:
-        bg = small_bgr
-    out = (bg.astype(np.float32) * keep).astype(np.uint8)
-    grow = int(round(cfg.grow * scale))
-    m = cv2.dilate(mask, _kernel(grow)) if grow > 0 else mask
-    sel = m > 0
-    if cfg.fill == "solid":
-        out[sel] = hex_to_bgr(cfg.fill_color)
-    else:
-        hsv = cv2.cvtColor(small_bgr, cv2.COLOR_BGR2HSV).astype(np.float32)
-        hsv[..., 1] = np.clip(hsv[..., 1] * 1.6, 0, 255)
-        hsv[..., 2] = np.clip(hsv[..., 2] * 1.3 + 40, 0, 255)
-        boosted = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
-        out[sel] = boosted[sel]
-    if cfg.edges and sel.any():
-        contours, _ = cv2.findContours(m, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cv2.drawContours(out, contours, -1, (255, 255, 255), 2 if min(out.shape[:2]) > 400 else 1)
-    return out
-
-
-def magnify(frame_bgr, cx, cy, zoom, size, contrast, pixelated):
-    """Square zoomed crop of `size` x `size` px centred on (cx, cy); off-frame areas are black."""
-    half = max(4, int(round(size / (2.0 * max(1.0, zoom)))))
-    h, w = frame_bgr.shape[:2]
-    crop = np.zeros((2 * half, 2 * half, 3), np.uint8)
-    x0, y0 = int(round(cx)) - half, int(round(cy)) - half
-    sx0, sy0 = max(0, x0), max(0, y0)
-    sx1, sy1 = min(w, x0 + 2 * half), min(h, y0 + 2 * half)
-    if sx1 > sx0 and sy1 > sy0:
-        crop[sy0 - y0:sy1 - y0, sx0 - x0:sx1 - x0] = frame_bgr[sy0:sy1, sx0:sx1]
-    interp = cv2.INTER_NEAREST if pixelated else cv2.INTER_CUBIC
-    out = cv2.resize(crop, (size, size), interpolation=interp)
-    if contrast:
-        a = 1.0 + contrast / 100.0
-        out = np.clip(out.astype(np.float32) * a + 128.0 * (1.0 - a), 0, 255).astype(np.uint8)
-    return out
-
-
-def pick_focus(tracks, frame_w, frame_h, source):
-    """Point the magnifier should look at, or None."""
-    if source == "centre":
-        return frame_w / 2.0, frame_h / 2.0
-    live = [t for t in tracks if t.missed == 0] or list(tracks)
-    if not live:
-        return None
-    if source == "largest":
-        t = max(live, key=lambda t: t.box[2] * t.box[3])
-    elif source == "nearest-centre":
-        t = min(live, key=lambda t: np.hypot(t.box[0] + t.box[2] / 2 - frame_w / 2,
-                                             t.box[1] + t.box[3] / 2 - frame_h / 2))
-    else:
-        t = min(live, key=lambda t: t.box[2] * t.box[3])
-    return float(t.box[0] + t.box[2] / 2), float(t.box[1] + t.box[3] / 2)
 
 
 def patch_stats(frame_bgr, x, y, radius=4):

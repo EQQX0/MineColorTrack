@@ -26,15 +26,13 @@ def to_qimage(bgr):
 
 class Result:
     """One processed frame. Coordinates are in captured-frame pixels."""
-    __slots__ = ("rect", "frame_size", "tracks", "frame_img", "contrast_img", "lens_img",
-                 "focus", "preview_img", "fps", "count")
+    __slots__ = ("rect", "frame_size", "tracks", "frame_img", "preview_img", "fps", "count")
 
     def __init__(self):
         self.rect = None
         self.frame_size = (1, 1)
         self.tracks = []            # (x, y, w, h, held, name, outline_hex)
-        self.frame_img = self.contrast_img = self.lens_img = self.preview_img = None
-        self.focus = None
+        self.frame_img = self.preview_img = None
         self.fps = 0.0
         self.count = 0
 
@@ -90,10 +88,16 @@ class Engine(QObject):
         bounds = sct.monitors[0]
         bounds = (bounds["left"], bounds["top"], bounds["width"], bounds["height"])
         if cap.source == "window":
-            rect = winplat.find_window(cap.window_title)
+            rect = winplat.find_window(cap.window_title, cap.window_exe)
             if rect is None:
-                return None, ("Window tracking only works on Windows." if not winplat.IS_WIN else
-                              "Waiting for a window titled '%s' (open PS Remote Play, not minimised)." % cap.window_title)
+                if not winplat.IS_WIN:
+                    msg = "Watching a window only works on Windows. Choose a monitor instead."
+                elif not (cap.window_title or cap.window_exe):
+                    msg = "Choose a window on the Watch page."
+                else:
+                    msg = "Waiting for the window \u201c%s\u201d. Open it and make sure it is not minimised." % (
+                        cap.window_title or cap.window_exe)
+                return None, msg
         elif cap.source == "monitor":
             idx = cap.monitor if 1 <= cap.monitor < len(sct.monitors) else 1
             m = sct.monitors[idx]
@@ -139,7 +143,7 @@ class Engine(QObject):
         prof = self.cfg.profile
         targets = list(prof.targets)
         scale = self.cfg.capture.scale / 100.0
-        blobs, small, mask = vision.detect(frame, targets, prof.tracking, scale)
+        blobs, small, _ = vision.detect(frame, targets, prof.tracking, scale)
         tracks = self._tracker.update(blobs, prof.tracking.smoothing, prof.tracking.hold_frames)
 
         res = Result()
@@ -154,17 +158,8 @@ class Engine(QObject):
             res.tracks.append((*t.box.tolist(), t.missed > 0, tg.name, tg.outline_color))
         res.count = sum(1 for t in tracks if t.missed == 0)
 
-        if prof.contrast.enabled:
-            res.contrast_img = to_qimage(vision.high_contrast(small, mask, prof.contrast, scale))
-        elif self.want_frame:
+        if self.want_frame:
             res.frame_img = to_qimage(frame)
-
-        mag = prof.magnifier
-        if mag.enabled:
-            res.focus = vision.pick_focus(tracks, w, h, mag.source)
-            if res.focus:
-                res.lens_img = to_qimage(vision.magnify(frame, res.focus[0], res.focus[1], mag.zoom,
-                                                        int(mag.size), mag.contrast, mag.pixelated))
 
         pi = self.preview_target
         if pi is not None and 0 <= pi < len(targets):

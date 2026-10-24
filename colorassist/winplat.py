@@ -3,6 +3,7 @@
 All rectangles here are physical screen pixels (x, y, w, h), the same space mss captures in.
 """
 import ctypes
+import os
 import sys
 
 IS_WIN = sys.platform == "win32"
@@ -22,6 +23,22 @@ if IS_WIN:
     user32.IsIconic.argtypes = [wintypes.HWND]
     user32.GetClientRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
     user32.ClientToScreen.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.POINT)]
+    user32.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
+    user32.GetWindow.argtypes = [wintypes.HWND, wintypes.UINT]
+    user32.GetWindow.restype = wintypes.HWND
+    user32.GetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int]
+    user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.QueryFullProcessImageNameW.argtypes = [wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR,
+                                                    ctypes.POINTER(wintypes.DWORD)]
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    try:
+        dwmapi = ctypes.WinDLL("dwmapi")
+        dwmapi.DwmGetWindowAttribute.argtypes = [wintypes.HWND, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD]
+    except OSError:
+        dwmapi = None
     _ENUM_PROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
 
 WDA_EXCLUDEFROMCAPTURE = 0x11
@@ -53,37 +70,99 @@ def place_window(widget, rect):
         widget.setGeometry(x, y, w, h)
 
 
-def find_window(title_part):
-    """Client area of the first visible window whose title contains `title_part`."""
-    if not IS_WIN or not title_part.strip():
-        return None
-    needle = title_part.lower()
-    found = []
+def _title(hwnd):
+    n = user32.GetWindowTextLengthW(hwnd)
+    if n <= 0:
+        return ""
+    buf = ctypes.create_unicode_buffer(n + 1)
+    user32.GetWindowTextW(hwnd, buf, n + 1)
+    return buf.value
+
+
+def _exe(hwnd):
+    pid = wintypes.DWORD()
+    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    handle = kernel32.OpenProcess(0x1000, False, pid.value)   # PROCESS_QUERY_LIMITED_INFORMATION
+    if not handle:
+        return ""
+    try:
+        buf = ctypes.create_unicode_buffer(1024)
+        size = wintypes.DWORD(1024)
+        if kernel32.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
+            return os.path.basename(buf.value)
+        return ""
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def _cloaked(hwnd):
+    """Hidden 'cloaked' windows (background Store apps, other virtual desktops) are not really on screen."""
+    if dwmapi is None:
+        return False
+    val = ctypes.c_int(0)
+    if dwmapi.DwmGetWindowAttribute(hwnd, 14, ctypes.byref(val), ctypes.sizeof(val)) != 0:
+        return False
+    return val.value != 0
+
+
+def list_windows():
+    """Open windows a person would recognise: [{'hwnd', 'title', 'exe', 'minimised'}], top-most first."""
+    if not IS_WIN:
+        return []
+    out = []
 
     def cb(hwnd, _):
-        if not user32.IsWindowVisible(hwnd) or user32.IsIconic(hwnd):
+        if not user32.IsWindowVisible(hwnd) or user32.GetWindow(hwnd, 4):      # 4 = GW_OWNER (popups)
             return True
-        n = user32.GetWindowTextLengthW(hwnd)
-        if n <= 0:
+        if user32.GetWindowLongW(hwnd, -20) & 0x80:                            # WS_EX_TOOLWINDOW
             return True
-        buf = ctypes.create_unicode_buffer(n + 1)
-        user32.GetWindowTextW(hwnd, buf, n + 1)
-        title = buf.value
-        if needle in title.lower() and OWN_TITLE not in title:
-            found.append(hwnd)
-            return False
+        title = _title(hwnd)
+        if not title or OWN_TITLE in title or _cloaked(hwnd):
+            return True
+        exe = _exe(hwnd)
+        if exe.lower() == "explorer.exe" and title == "Program Manager":       # the desktop itself
+            return True
+        minimised = bool(user32.IsIconic(hwnd))
+        rc = wintypes.RECT()
+        user32.GetWindowRect(hwnd, ctypes.byref(rc))
+        if not minimised and (rc.right - rc.left < 120 or rc.bottom - rc.top < 80):
+            return True
+        out.append({"hwnd": hwnd, "title": title, "exe": exe, "minimised": minimised})
         return True
 
     user32.EnumWindows(_ENUM_PROC(cb), 0)
-    if not found:
-        return None
+    return out
+
+
+def _client_rect(hwnd):
     rc = wintypes.RECT()
     pt = wintypes.POINT(0, 0)
-    if not user32.GetClientRect(found[0], ctypes.byref(rc)) or not user32.ClientToScreen(found[0], ctypes.byref(pt)):
+    if not user32.GetClientRect(hwnd, ctypes.byref(rc)) or not user32.ClientToScreen(hwnd, ctypes.byref(pt)):
         return None
     if rc.right < 32 or rc.bottom < 32:
         return None
     return (pt.x, pt.y, rc.right, rc.bottom)
+
+
+def find_window(title_part, exe=""):
+    """Client area of the chosen window.
+
+    Best match: same program and title containing `title_part`; then title alone; then program alone
+    (titles often change, e.g. when a game shows its version or the current level).
+    """
+    if not IS_WIN or not (title_part.strip() or exe.strip()):
+        return None
+    needle, exe_l = title_part.strip().lower(), exe.strip().lower()
+    wins = [w for w in list_windows() if not w["minimised"]]
+    for rule in (lambda w: exe_l and w["exe"].lower() == exe_l and needle in w["title"].lower(),
+                 lambda w: needle and needle in w["title"].lower(),
+                 lambda w: exe_l and w["exe"].lower() == exe_l):
+        for w in wins:
+            if rule(w):
+                rect = _client_rect(w["hwnd"])
+                if rect:
+                    return rect
+    return None
 
 
 _VK_NAMED = {"SPACE": 0x20, "PAGEUP": 0x21, "PAGEDOWN": 0x22, "END": 0x23, "HOME": 0x24,

@@ -65,10 +65,7 @@ class AssistView(QWidget):
         sx, sy = vr.width() / fw, vr.height() / fh
         prof = self.cfg.profile
 
-        if res.contrast_img is not None:
-            p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-            p.drawImage(vr, res.contrast_img)
-        elif self.mirror and res.frame_img is not None:
+        if self.mirror and res.frame_img is not None:
             p.drawImage(vr, res.frame_img)
 
         if prof.outline.enabled:
@@ -80,8 +77,6 @@ class AssistView(QWidget):
                 p.setPen(QPen(colr, w))
                 p.drawLine(QPointF(c.x() - 14, c.y()), QPointF(c.x() + 14, c.y()))
                 p.drawLine(QPointF(c.x(), c.y() - 14), QPointF(c.x(), c.y() + 14))
-        if prof.magnifier.enabled and res.lens_img is not None and res.focus:
-            self._lens(p, res, vr, sx, sy, prof.magnifier)
         if self.mirror and self.message:
             self._text(p, QPointF(20, 40), self.message, QColor("#FFFFFF"))
 
@@ -140,38 +135,3 @@ class AssistView(QWidget):
                     top -= s + 4
             if cfg.labels:
                 self._text(p, QPointF(r.left(), top - 2), name, col, 12)
-
-    def _lens(self, p, res, vr, sx, sy, cfg):
-        size = float(cfg.size)
-        fx, fy = vr.x() + res.focus[0] * sx, vr.y() + res.focus[1] * sy
-        m = 16.0
-        pos = cfg.position
-        if pos == "follow":
-            lx = fx + 40 if fx + 40 + size < self.width() - m else fx - 40 - size
-            ly = min(max(m, fy - size / 2), self.height() - size - m)
-            lx = min(max(m, lx), self.width() - size - m)
-        else:
-            lx = m if "left" in pos else self.width() - size - m
-            ly = m if "top" in pos else self.height() - size - m
-        lens = QRectF(lx, ly, size, size)
-        clip = QPainterPath()
-        if cfg.shape == "circle":
-            clip.addEllipse(lens)
-        else:
-            clip.addRect(lens)
-        border = QColor(cfg.border_color)
-        src_r = size / (2 * max(1.0, cfg.zoom)) * sx
-        if cfg.link_line:
-            p.setBrush(Qt.BrushStyle.NoBrush)
-            for w, c in ((5, QColor(0, 0, 0)), (2, border)):
-                p.setPen(QPen(c, w))
-                p.drawEllipse(QPointF(fx, fy), src_r, src_r)
-                p.drawLine(QPointF(fx, fy), lens.center())
-        p.save()
-        p.setClipPath(clip)
-        p.drawImage(lens, res.lens_img)
-        p.restore()
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        for w, c in ((8, QColor(0, 0, 0)), (3, border)):
-            p.setPen(QPen(c, w))
-            p.drawPath(clip)
