@@ -274,3 +274,16 @@ def test_benchmark_compares_devices_with_cpu(tmp_path, providers, monkeypatch):
     same = by[("tensorrt", True)]["vs_cpu_fp32"]            # fake TensorRT runs the CPU model: identical boxes
     assert same["matched"] == 2 and same["missing"] == same["extra"] == 0 and same["max_shift_px"] == 0
     assert "skipped" in by[("cuda", False)] and "CUDA could not start" in by[("cuda", False)]["skipped"]
+
+
+def test_nvidia_requirements_match_the_default_ones():
+    root = os.path.join(os.path.dirname(__file__), "..")
+
+    def reqs(name):
+        with open(os.path.join(root, name), encoding="utf-8") as fh:
+            return [ln.strip() for ln in fh if ln.strip() and not ln.startswith("#")]
+    default, nvidia = reqs("requirements.txt"), reqs("requirements-nvidia.txt")
+    assert [r for r in nvidia if not r.startswith("onnxruntime")] == \
+        [r for r in default if not r.startswith("onnxruntime")]
+    assert [r for r in nvidia if r.startswith("onnxruntime")] == ["onnxruntime-gpu>=1.20"]
+    assert any(r.startswith("onnxruntime-directml") for r in default)       # the installer keeps DirectML
