@@ -8,6 +8,16 @@ It only draws on screen. It never sends controller, mouse or keyboard input to t
 
 ![Control panel](docs/ui_home.png)
 
+## How it works
+
+1. **Capture**: grabs frames of a window, monitor or screen area.
+2. **Colour targets**: you pick a colour and it finds things of that colour, filtered by size.
+3. **AI entities** (optional): your own trained model finds things colour can't tell apart, like creepers vs grass.
+4. **Tracking**: smooths the outlines and keeps a lost target marked for a moment.
+5. **Display**: draws outlines in an overlay on the game, or in a separate mirror window.
+6. **Live export**: writes each frame's detections to `detections.json` so other programs can read them
+   (turn it on with `mct set export.enabled on`).
+
 ## Download and install
 
 1. Open the **Releases** page of this repository (right-hand side on GitHub, or `/releases`).
