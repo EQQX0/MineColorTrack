@@ -136,3 +136,12 @@ def test_migration_removes_old_built_ins_but_keeps_user_work(tmp_path):
     kept = dataclasses.asdict(old)                                   # already new format: untouched
     p.write_text(json.dumps(kept))
     assert config.load(str(p)).capture.window_title == "PS Remote Play"
+
+
+def test_hotkey_extra_keys_and_vk_tokens():
+    from colorassist import winplat
+    assert winplat.parse_hotkey("Alt+Left") == (winplat.MOD_ALT, 0x25)
+    assert winplat.parse_hotkey("Ctrl+;") == (winplat.MOD_CONTROL, 0xBA)
+    assert winplat.parse_hotkey("Shift+VK200") == (winplat.MOD_SHIFT, 200)
+    for vk in (0x41, 0x35, 0x65, 0x76, 0x25, 0xBE, 0xFE):
+        assert winplat.parse_hotkey(winplat.vk_to_token(vk))[1] == vk

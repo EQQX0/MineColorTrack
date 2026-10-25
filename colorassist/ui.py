@@ -2,12 +2,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Look and feel: colour themes and the custom widgets used by the control panel."""
 import os
+import sys
 import tempfile
 
 from PyQt6.QtCore import QPointF, QRectF, QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QImage, QPainter, QPalette, QPen, QPolygonF
 from PyQt6.QtWidgets import (QAbstractButton, QDoubleSpinBox, QFrame, QHBoxLayout, QLabel, QPushButton,
                              QSlider, QSpinBox, QStyle, QVBoxLayout, QWidget)
+
+from . import winplat
 
 THEMES = {
     # Surfaces are separated by a step in tone, not by outlines; `edge` is only drawn in the high-contrast theme.
@@ -71,6 +74,7 @@ QPushButton#primary:hover {{ background: {accent}; border-color: {text}; }}
 QPushButton#danger {{ background: {danger}; color: {danger_text}; border: 2px solid {danger}; font-weight: 700; }}
 QPushButton#danger:hover {{ background: {danger}; border-color: {text}; }}
 QPushButton#primary:focus, QPushButton#danger:focus {{ border: 2px solid {text}; }}
+QPushButton#mod:checked {{ background: {accent}; color: {accent_text}; border-color: {accent}; font-weight: 700; }}
 QPushButton#big {{ font-size: {h2}pt; padding: 16px 38px; border-radius: 30px; min-height: 28px; }}
 QToolButton::menu-indicator {{ image: none; }}
 QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {{ background: {surface2}; border: 2px solid {edge};
@@ -273,61 +277,61 @@ class SliderField(QWidget):
             w.blockSignals(False)
 
 
-_KEY_NAMES = {Qt.Key.Key_Space: "Space", Qt.Key.Key_PageUp: "PageUp", Qt.Key.Key_PageDown: "PageDown",
-              Qt.Key.Key_End: "End", Qt.Key.Key_Home: "Home", Qt.Key.Key_Insert: "Insert",
-              Qt.Key.Key_Delete: "Delete", Qt.Key.Key_Pause: "Pause", Qt.Key.Key_ScrollLock: "ScrollLock"}
+_QT_KEY_TOKENS = {Qt.Key.Key_Space: "Space", Qt.Key.Key_PageUp: "PageUp", Qt.Key.Key_PageDown: "PageDown",
+                  Qt.Key.Key_End: "End", Qt.Key.Key_Home: "Home", Qt.Key.Key_Insert: "Insert",
+                  Qt.Key.Key_Delete: "Delete", Qt.Key.Key_Pause: "Pause", Qt.Key.Key_ScrollLock: "ScrollLock",
+                  Qt.Key.Key_Left: "Left", Qt.Key.Key_Up: "Up", Qt.Key.Key_Right: "Right",
+                  Qt.Key.Key_Down: "Down", Qt.Key.Key_Tab: "Tab", Qt.Key.Key_Return: "Enter",
+                  Qt.Key.Key_Enter: "Enter", Qt.Key.Key_Backspace: "Backspace"}
 _MODIFIER_KEYS = (Qt.Key.Key_Control, Qt.Key.Key_Shift, Qt.Key.Key_Alt, Qt.Key.Key_Meta, Qt.Key.Key_AltGr)
+_MODS = ("Ctrl", "Alt", "Shift")
 
 
-def key_event_to_text(event):
-    """A key press as 'Ctrl+Alt+O' text, or None while only modifiers are down or the key is unsupported."""
+def key_event_to_token(event):
+    """The pressed key alone ('O', 'F7', 'Num5', 'Left', ...), or None for modifier keys."""
     key = event.key()
-    mods = event.modifiers()
     if key in _MODIFIER_KEYS:
         return None
+    if sys.platform == "win32" and event.nativeVirtualKey():
+        return winplat.vk_to_token(event.nativeVirtualKey())
     if Qt.Key.Key_F1 <= key <= Qt.Key.Key_F24:
-        name = "F%d" % (key - Qt.Key.Key_F1 + 1)
-    elif Qt.Key.Key_0 <= key <= Qt.Key.Key_9 and mods & Qt.KeyboardModifier.KeypadModifier:
-        name = "Num%d" % (key - Qt.Key.Key_0)
-    elif Qt.Key.Key_0 <= key <= Qt.Key.Key_9 or Qt.Key.Key_A <= key <= Qt.Key.Key_Z:
-        name = chr(key)
-    elif Qt.Key(key) in _KEY_NAMES:
-        name = _KEY_NAMES[Qt.Key(key)]
-    else:
-        return None
-    parts = [label for flag, label in ((Qt.KeyboardModifier.ControlModifier, "Ctrl"),
-                                       (Qt.KeyboardModifier.AltModifier, "Alt"),
-                                       (Qt.KeyboardModifier.ShiftModifier, "Shift"),
-                                       (Qt.KeyboardModifier.MetaModifier, "Win")) if mods & flag]
-    return "+".join(parts + [name])
+        return "F%d" % (key - Qt.Key.Key_F1 + 1)
+    if Qt.Key.Key_0 <= key <= Qt.Key.Key_9 and event.modifiers() & Qt.KeyboardModifier.KeypadModifier:
+        return "Num%d" % (key - Qt.Key.Key_0)
+    if Qt.Key.Key_0 <= key <= Qt.Key.Key_9 or Qt.Key.Key_A <= key <= Qt.Key.Key_Z:
+        return chr(key)
+    return _QT_KEY_TOKENS.get(Qt.Key(key))
 
 
-class HotkeyEdit(QPushButton):
-    """Click it, then press the key or combination you want. Esc cancels, Backspace clears."""
-    hotkeyChanged = pyqtSignal(str)
+def split_hotkey(text):
+    """'Ctrl+Alt+O' -> ({'Ctrl', 'Alt'}, 'O'). The key part may be empty."""
+    parts = [p.strip() for p in (text or "").split("+") if p.strip()]
+    mods = {m for p in parts for m in _MODS if p.lower() == m.lower()}
+    keys = [p for p in parts if p.lower() not in ("ctrl", "control", "alt", "shift", "win")]
+    return mods, (keys[0] if keys else "")
+
+
+class KeyCapture(QPushButton):
+    """Click it, then press any one key; it takes that key. Esc cancels."""
+    keyPicked = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._value = ""
+        self._key = ""
         self._recording = False
-        self.setMinimumWidth(190)
-        self.setMaximumWidth(260)
-        self.setCheckable(False)
+        self.setMinimumWidth(150)
         self.clicked.connect(self._start)
         self._show()
 
-    def value(self):
-        return self._value
+    def key(self):
+        return self._key
 
-    def setValue(self, text):
-        self._value = text or ""
+    def setKey(self, key):
+        self._key = key or ""
         self._stop()
 
     def _show(self):
-        if self._recording:
-            self.setText("Press a key…")
-        else:
-            self.setText(self._value or "Not set (click to set)")
+        self.setText("Press a key…" if self._recording else (self._key or "Click, then press a key"))
 
     def _start(self):
         self._recording = True
@@ -340,26 +344,17 @@ class HotkeyEdit(QPushButton):
         self._recording = False
         self._show()
 
-    def _commit(self, text):
-        self._value = text
-        self._stop()
-        self.hotkeyChanged.emit(text)
-
     def event(self, e):
         if self._recording and e.type() in (e.Type.KeyPress, e.Type.ShortcutOverride):
             if e.type() == e.Type.KeyPress:
-                key = e.key()
-                if key == Qt.Key.Key_Escape:
+                if e.key() == Qt.Key.Key_Escape:
                     self._stop()
-                elif key == Qt.Key.Key_Backspace:
-                    self._commit("")
                 else:
-                    text = key_event_to_text(e)
-                    needs_mod = not (text and ("+" in text or text[0] == "F" or text in ("Pause", "ScrollLock")))
-                    if text and not needs_mod:
-                        self._commit(text)
-                    elif text:
-                        self.setText("Add Ctrl, Alt or Shift…")
+                    token = key_event_to_token(e)
+                    if token:
+                        self._key = token
+                        self._stop()
+                        self.keyPicked.emit(token)
             e.accept()
             return True
         return super().event(e)
@@ -367,6 +362,64 @@ class HotkeyEdit(QPushButton):
     def focusOutEvent(self, e):
         self._stop()
         super().focusOutEvent(e)
+
+
+class HotkeyEdit(QWidget):
+    """A hotkey as two parts: Ctrl / Alt / Shift toggles, then one key you pick by pressing it."""
+    hotkeyChanged = pyqtSignal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._win = False
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(8)
+        self._mods = {}
+        for m in _MODS:
+            b = QPushButton(m)
+            b.setObjectName("mod")
+            b.setCheckable(True)
+            b.toggled.connect(self._changed)
+            row.addWidget(b)
+            self._mods[m] = b
+        row.addSpacing(6)
+        self._key = KeyCapture()
+        self._key.keyPicked.connect(self._changed)
+        row.addWidget(self._key)
+        self._clear = QPushButton("Clear")
+        self._clear.clicked.connect(self._cleared)
+        row.addWidget(self._clear)
+        row.addStretch(1)
+
+    def setToolTip(self, text):
+        super().setToolTip(text)
+        for w in (*self._mods.values(), self._key, self._clear):
+            w.setToolTip(text)
+
+    def value(self):
+        key = self._key.key()
+        if not key:
+            return ""
+        parts = [m for m in _MODS if self._mods[m].isChecked()]
+        if self._win:
+            parts.insert(0, "Win")
+        return "+".join(parts + [key])
+
+    def setValue(self, text):
+        mods, key = split_hotkey(text)
+        self._win = "win" in (text or "").lower().split("+")
+        for m, b in self._mods.items():
+            b.blockSignals(True)
+            b.setChecked(m in mods)
+            b.blockSignals(False)
+        self._key.setKey(key)
+
+    def _changed(self, *_):
+        self.hotkeyChanged.emit(self.value())
+
+    def _cleared(self):
+        self.setValue("")
+        self.hotkeyChanged.emit("")
 
 
 class ColourButton(QPushButton):

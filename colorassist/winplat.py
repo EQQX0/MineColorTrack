@@ -168,7 +168,24 @@ def find_window(title_part, exe=""):
 
 
 _VK_NAMED = {"SPACE": 0x20, "PAGEUP": 0x21, "PAGEDOWN": 0x22, "END": 0x23, "HOME": 0x24,
-             "INSERT": 0x2D, "DELETE": 0x2E, "PAUSE": 0x13, "SCROLLLOCK": 0x91}
+             "INSERT": 0x2D, "DELETE": 0x2E, "PAUSE": 0x13, "SCROLLLOCK": 0x91,
+             "LEFT": 0x25, "UP": 0x26, "RIGHT": 0x27, "DOWN": 0x28, "TAB": 0x09, "ENTER": 0x0D,
+             "BACKSPACE": 0x08, "ESC": 0x1B, "CAPSLOCK": 0x14, "NUMLOCK": 0x90, "PRINTSCREEN": 0x2C,
+             "NUMMULTIPLY": 0x6A, "NUMADD": 0x6B, "NUMSUBTRACT": 0x6D, "NUMDECIMAL": 0x6E, "NUMDIVIDE": 0x6F,
+             ";": 0xBA, "=": 0xBB, ",": 0xBC, "-": 0xBD, ".": 0xBE, "/": 0xBF, "`": 0xC0,
+             "[": 0xDB, "\\": 0xDC, "]": 0xDD, "'": 0xDE}
+_VK_TOKENS = {vk: name for name, vk in _VK_NAMED.items()}
+
+
+def vk_to_token(vk):
+    """A Windows virtual-key code as the text parse_hotkey reads back (any key has one)."""
+    if 0x30 <= vk <= 0x39 or 0x41 <= vk <= 0x5A:
+        return chr(vk)
+    if 0x60 <= vk <= 0x69:
+        return "Num%d" % (vk - 0x60)
+    if 0x70 <= vk <= 0x87:
+        return "F%d" % (vk - 0x6F)
+    return _VK_TOKENS.get(vk, "VK%d" % vk if vk else None)
 
 
 def parse_hotkey(text):
@@ -191,6 +208,8 @@ def parse_hotkey(text):
             vk = 0x6F + int(part[1:])
         elif part in _VK_NAMED:
             vk = _VK_NAMED[part]
+        elif part.startswith("VK") and part[2:].isdigit() and 0 < int(part[2:]) < 255:
+            vk = int(part[2:])
         else:
             return None
     return (mods, vk) if vk is not None else None

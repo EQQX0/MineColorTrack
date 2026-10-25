@@ -368,7 +368,7 @@ for example on a second monitor. Keep the game itself visible somewhere (not min
 rename or delete it. The profile in use is remembered.</li>
 <li><b>Hotkeys</b> work anywhere, also while the game is active: Start / stop, Next profile, Outline on/off,
 Save screenshot for labelling.
-Type a combination such as Ctrl+Alt+O and press Apply hotkeys.</li>
+Switch on Ctrl, Alt or Shift, click the key box and press any key. It applies at once.</li>
 <li><b>Tracking</b>: Smoothing makes outlines steadier; Join pieces makes one outline per mob; Speck filter
 removes single-pixel noise.</li>
 <li><b>Settings</b>: dark, light or high-contrast theme, text size, start automatically, keep running in the

@@ -827,8 +827,8 @@ class Panel(QMainWindow):
         k = lambda: self.cfg.hotkeys
         R = self._refreshers
         w, v = self._page("Hotkeys", "Work anywhere, also while the game window is active. "
-                                     "Click a box, then press the key or combination you want. "
-                                     "Esc cancels, Backspace clears (disables it).", "profiles")
+                                     "Switch on Ctrl, Alt and Shift if you want them, then click the key box and press any key. "
+                                     "Clear turns a hotkey off.", "profiles")
         c, cl = card()
         f = self._form(cl)
         for attr in ("toggle_overlay", "next_profile", "toggle_outline", "save_screenshot"):
