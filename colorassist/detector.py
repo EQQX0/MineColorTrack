@@ -149,9 +149,48 @@ def _loadable(name):
         return False
 
 
-def missing_libraries(key, loader=_loadable):
+def missing_libraries(key, loader=None):
     """NVIDIA libraries that cannot be loaded for 'cuda' or 'tensorrt', as human-readable names."""
+    loader = loader or _loadable                  # looked up now, so tests can replace it
     return ["%s (%s)" % (what, name) for name, what in _lib_names(key, cuda_build_version()) if not loader(name)]
+
+
+def _tensorrt_pip_folder():
+    """Folder of the pip-installed TensorRT libraries (the tensorrt-cu12/-cu13 packages), or None."""
+    import importlib.util
+    try:
+        spec = importlib.util.find_spec("tensorrt_libs")
+    except (ImportError, ValueError):
+        return None
+    folders = list(spec.submodule_search_locations or []) if spec else []
+    return folders[0] if folders and os.path.isdir(folders[0]) else None
+
+
+def preload_tensorrt(folder=None, loader=None):
+    """Make pip-installed TensorRT findable: onnxruntime.preload_dlls() covers CUDA and cuDNN, not TensorRT.
+    Puts the folder on this process's PATH (TensorRT loads its builder libraries from there later) and loads the
+    two libraries ONNX Runtime's TensorRT provider links to. Returns the folder used, or None."""
+    folder = folder or _tensorrt_pip_folder()
+    if not folder:
+        return None
+    if folder not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = folder + os.pathsep + os.environ.get("PATH", "")
+    if sys.platform == "win32" and hasattr(os, "add_dll_directory"):
+        with contextlib.suppress(OSError):
+            os.add_dll_directory(folder)
+    if loader is None:
+        import ctypes
+        loader = ctypes.WinDLL if sys.platform == "win32" else ctypes.CDLL
+    names = ("nvinfer_10.dll", "nvonnxparser_10.dll") if sys.platform == "win32" else (
+        "libnvinfer.so.10", "libnvonnxparser.so.10")
+    for name in names:
+        path = os.path.join(folder, name)
+        if os.path.exists(path):
+            try:
+                loader(path)
+            except OSError as exc:
+                log.info("Could not load %s: %s", path, exc)
+    return folder
 
 
 def nvidia_driver_present():
@@ -167,11 +206,11 @@ def requirements_text(key):
     text = "%s needs an NVIDIA graphics card with %s, CUDA %s or newer %s.x and cuDNN 9" % (
         _LABEL[key], driver, cuda, major)
     if key == "tensorrt":
-        text += ", plus TensorRT 10 for CUDA %s" % major
+        text += ", plus TensorRT 10 for CUDA %s (pip install \"tensorrt-cu%s>=10,<11\")" % (major, major)
     return text + ". The folders holding their DLLs must be on PATH (or install onnxruntime-gpu[cuda,cudnn])."
 
 
-def explain_failure(key, error, loader=_loadable, names=None):
+def explain_failure(key, error, loader=None, names=None):
     """A friendly sentence for a provider that did not start. `names`: what to call it ("TensorRT and CUDA")."""
     names = names or _LABEL[key]
     if key in ("tensorrt", "cuda"):
@@ -264,6 +303,8 @@ class Detector:
                     ort.preload_dlls()
             except Exception as exc:
                 log.info("preload_dlls: %s", exc)
+        if chain[0][0] == "tensorrt":
+            preload_tensorrt()
         have = available_providers()
         self.session = None
         for key, name in chain:
@@ -424,10 +465,10 @@ class Detector:
         for (x1, y1, x2, y2), s, c in zip(xyxy, scores, cls):
             if allowed is not None and int(c) not in allowed:
                 continue
-            x1 = max(0.0, (x1 - px) / r)
-            y1 = max(0.0, (y1 - py) / r)
-            x2 = min(float(fw), (x2 - px) / r)
-            y2 = min(float(fh), (y2 - py) / r)
+            x1 = max(0.0, float(x1 - px) / r)          # plain floats: results are also written out as JSON
+            y1 = max(0.0, float(y1 - py) / r)
+            x2 = min(float(fw), float(x2 - px) / r)
+            y2 = min(float(fh), float(y2 - py) / r)
             if x2 - x1 >= 2 and y2 - y1 >= 2:
                 dets.append(Detection(int(c), x1, y1, x2 - x1, y2 - y1, float(s)))
         t3 = time.perf_counter()

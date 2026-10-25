@@ -287,3 +287,19 @@ def test_nvidia_requirements_match_the_default_ones():
         [r for r in default if not r.startswith("onnxruntime")]
     assert [r for r in nvidia if r.startswith("onnxruntime")] == ["onnxruntime-gpu>=1.20"]
     assert any(r.startswith("onnxruntime-directml") for r in default)       # the installer keeps DirectML
+
+
+def test_preload_tensorrt_from_pip_folder(tmp_path, monkeypatch):
+    folder = tmp_path / "tensorrt_libs"
+    folder.mkdir()
+    (folder / "nvinfer_10.dll").write_bytes(b"")
+    (folder / "nvonnxparser_10.dll").write_bytes(b"")
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(os, "add_dll_directory", lambda p: None, raising=False)
+    monkeypatch.setenv("PATH", "somewhere")
+    loaded = []
+    assert detector.preload_tensorrt(str(folder), loader=loaded.append) == str(folder)
+    assert [os.path.basename(p) for p in loaded] == ["nvinfer_10.dll", "nvonnxparser_10.dll"]
+    assert os.environ["PATH"].split(os.pathsep)[0] == str(folder)
+    monkeypatch.setattr(detector, "_tensorrt_pip_folder", lambda: None)
+    assert detector.preload_tensorrt() is None                      # no pip TensorRT: nothing to do
