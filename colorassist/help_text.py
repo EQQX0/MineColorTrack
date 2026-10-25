@@ -59,6 +59,11 @@ TIPS = {
                                         "close to the middle."),
     "capture.focus_show": ("Show the zone on screen", "Draw a dashed line around the zone so you can see where "
                                                       "it is."),
+    "capture.focus_color": ("Zone colour", "Colour of the zone's dashed line and of its inside."),
+    "capture.focus_line_alpha": ("Line opacity", "How solid the zone's line is. 100% is fully solid, 0% hides "
+                                                 "the line."),
+    "capture.focus_fill_alpha": ("Inside opacity", "How strongly the inside of the zone is tinted. A low value "
+                                                   "(about 5%) is almost invisible; 0% leaves the inside clear."),
     # Targets
     "target_list": ("", "Targets in this profile. Select one to edit it."),
     "target_add": ("", "Add a new target to this profile and pick its colour from the game straight away.\n"
@@ -257,7 +262,8 @@ game picture.</li>
 <li><b>Performance</b>: frames per second (up to 120), processing resolution, and the capture method.
 Automatic uses Windows' fast Desktop Duplication when it works. Lower the numbers if your PC struggles.</li>
 <li><b>Centre zone</b>: look only in a circle or square in the middle of the picture. Its size is a percent of
-the picture's shorter side. Things outside it are ignored. Leave it on <b>Whole picture</b> to watch everything.</li>
+the picture's shorter side. Things outside it are ignored. Leave it on <b>Whole picture</b> to watch everything.
+You can change the zone's colour and how see-through its line and its inside are.</li>
 </ol>
 <p>Tip: watching only the game window gives fewer false matches than a whole monitor, because the taskbar and
 other windows are left out. Games in exclusive full screen may block capture; use windowed or borderless mode.</p>

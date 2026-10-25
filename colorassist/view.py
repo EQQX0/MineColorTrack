@@ -82,12 +82,22 @@ class AssistView(QWidget):
         if cap.focus_shape != "off" and cap.focus_show:
             half = cap.focus_size / 100.0 * min(fw, fh) / 2.0
             zone = QRectF(vr.center().x() - half * sx, vr.center().y() - half * sy, 2 * half * sx, 2 * half * sy)
-            p.setBrush(Qt.BrushStyle.NoBrush)
-            for width, colour in ((4, QColor(0, 0, 0)), (2, QColor("#FFFFFF"))):
-                pen = QPen(colour, width)
-                if width == 2:
-                    pen.setStyle(Qt.PenStyle.DashLine)
-                p.setPen(pen)
+            base = QColor(cap.focus_color)
+            fill = QColor(base)
+            fill.setAlphaF(cap.focus_fill_alpha / 100.0)
+            line = QColor(base)
+            line.setAlphaF(cap.focus_line_alpha / 100.0)
+            backing = QColor(0, 0, 0)
+            backing.setAlphaF(0.6 * cap.focus_line_alpha / 100.0)
+            for width, colour, brush in ((0, None, fill), (4, backing, None), (2, line, None)):
+                p.setBrush(brush if brush is not None else Qt.BrushStyle.NoBrush)
+                if colour is None:
+                    p.setPen(Qt.PenStyle.NoPen)
+                else:
+                    pen = QPen(colour, width)
+                    if width == 2:
+                        pen.setStyle(Qt.PenStyle.DashLine)
+                    p.setPen(pen)
                 if cap.focus_shape == "circle":
                     p.drawEllipse(zone)
                 else:

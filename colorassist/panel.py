@@ -419,6 +419,13 @@ class Panel(QMainWindow):
         self._row(f, "capture.focus_size", self._bind("slider", cap, "focus_size", R, "capture.focus_size",
                                                       lo=5, hi=100, step=5, suffix=" %"))
         f.addRow("", self._bind("switch", cap, "focus_show", R, "capture.focus_show"))
+        self._row(f, "capture.focus_color", self._bind("colour", cap, "focus_color", R, "capture.focus_color"))
+        self._row(f, "capture.focus_line_alpha", self._bind("slider", cap, "focus_line_alpha", R,
+                                                            "capture.focus_line_alpha", lo=0, hi=100, step=5,
+                                                            suffix=" %"))
+        self._row(f, "capture.focus_fill_alpha", self._bind("slider", cap, "focus_fill_alpha", R,
+                                                            "capture.focus_fill_alpha", lo=0, hi=100, step=1,
+                                                            suffix=" %"))
         v.addWidget(c)
         v.addStretch(1)
         self.anchors["watch"] = [self.source_box, self.window_box, self.monitor_box, self.region_btn, self.perf_card,

@@ -81,6 +81,9 @@ class CaptureCfg:
     focus_shape: str = "off"    # only look in the middle: off | circle | square
     focus_size: int = 50        # its size, percent of the watched picture's shorter side
     focus_show: bool = True     # draw the zone on screen so you can see it
+    focus_color: str = "#FF0000"    # colour of the zone's line and inside
+    focus_line_alpha: int = 70      # line opacity, percent
+    focus_fill_alpha: int = 6       # inside opacity, percent (almost invisible)
 
 
 @dataclass
@@ -185,6 +188,7 @@ def default_config():
 LIMITS = {
     ("CaptureCfg", "fps"): (5, 120), ("CaptureCfg", "scale"): (20, 100), ("CaptureCfg", "monitor"): (1, 16),
     ("CaptureCfg", "focus_size"): (5, 100),
+    ("CaptureCfg", "focus_line_alpha"): (0, 100), ("CaptureCfg", "focus_fill_alpha"): (0, 100),
     ("DisplayCfg", "ui_font_pt"): (9, 24),
     ("OutlineCfg", "thickness"): (1, 24), ("OutlineCfg", "padding"): (0, 60),
     ("TrackingCfg", "smoothing"): (0, 95), ("TrackingCfg", "hold_frames"): (0, 90),
@@ -194,7 +198,7 @@ LIMITS = {
     ("Target", "val_min"): (0, 100), ("Target", "val_max"): (0, 100),
     ("Target", "min_area"): (1, 200000), ("Target", "max_area"): (0, 2000000),
 }
-COLOUR_FIELDS = {"color", "outline_color"}
+COLOUR_FIELDS = {"color", "outline_color", "focus_color"}
 
 
 def convert(obj, attr, text):
