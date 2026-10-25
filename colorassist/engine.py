@@ -259,6 +259,11 @@ class Engine(QObject):
                         blobs.append(vision.Blob(ENTITY_BASE + d.cls, d.x, d.y, d.w, d.h, int(d.w * d.h)))
                     ms.update(det.last_ms)
         t_track = time.perf_counter()
+        fh, fw = frame.shape[:2]
+        cap = self.cfg.capture
+        if cap.focus_shape != "off":                  # only look in the middle zone
+            blobs = [b for b in blobs if vision.focus_contains(cap.focus_shape, cap.focus_size, fw, fh,
+                                                                b.x + b.w / 2.0, b.y + b.h / 2.0)]
         tracks = self._tracker.update(blobs, prof.tracking.smoothing, prof.tracking.hold_frames)
 
         res.rect = rect

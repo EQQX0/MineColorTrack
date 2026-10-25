@@ -78,6 +78,20 @@ class AssistView(QWidget):
         if self.mirror and res.frame_img is not None:
             p.drawImage(vr, res.frame_img)
 
+        cap = self.cfg.capture
+        if cap.focus_shape != "off" and cap.focus_show:
+            half = cap.focus_size / 100.0 * min(fw, fh) / 2.0
+            zone = QRectF(vr.center().x() - half * sx, vr.center().y() - half * sy, 2 * half * sx, 2 * half * sy)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            for width, colour in ((4, QColor(0, 0, 0)), (2, QColor("#FFFFFF"))):
+                pen = QPen(colour, width)
+                if width == 2:
+                    pen.setStyle(Qt.PenStyle.DashLine)
+                p.setPen(pen)
+                if cap.focus_shape == "circle":
+                    p.drawEllipse(zone)
+                else:
+                    p.drawRect(zone)
         if prof.outline.enabled:
             self._outlines(p, res, vr, sx, sy, prof.outline)
         if self.mirror and self.message:

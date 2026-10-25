@@ -50,6 +50,15 @@ TIPS = {
     "capture.scale": ("Processing resolution", "Size at which each frame is analysed. 100% finds the smallest, "
                                                "farthest targets;\nlower values are faster. Outlines are always "
                                                "drawn at full size."),
+    "capture.focus_shape": ("Look only in the middle", "Only things whose centre is inside this zone are found and "
+                                                       "outlined; everything outside is ignored.\n"
+                                                       "Whole picture = no zone. Circle or square = a zone in the "
+                                                       "middle of the watched picture."),
+    "capture.focus_size": ("Zone size", "How big the middle zone is, as a percent of the watched picture's shorter "
+                                        "side.\nBigger covers more of the picture, smaller keeps only what is "
+                                        "close to the middle."),
+    "capture.focus_show": ("Show the zone on screen", "Draw a dashed line around the zone so you can see where "
+                                                      "it is."),
     # Targets
     "target_list": ("", "Targets in this profile. Select one to edit it."),
     "target_add": ("", "Add a new target to this profile and pick its colour from the game straight away.\n"
@@ -247,6 +256,8 @@ window again next time, even if its title changes.</li>
 game picture.</li>
 <li><b>Performance</b>: frames per second (up to 120), processing resolution, and the capture method.
 Automatic uses Windows' fast Desktop Duplication when it works. Lower the numbers if your PC struggles.</li>
+<li><b>Centre zone</b>: look only in a circle or square in the middle of the picture. Its size is a percent of
+the picture's shorter side. Things outside it are ignored. Leave it on <b>Whole picture</b> to watch everything.</li>
 </ol>
 <p>Tip: watching only the game window gives fewer false matches than a whole monitor, because the taskbar and
 other windows are left out. Games in exclusive full screen may block capture; use windowed or borderless mode.</p>

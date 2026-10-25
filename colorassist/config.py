@@ -78,6 +78,9 @@ class CaptureCfg:
     fps: int = 30
     scale: int = 50             # processing resolution, percent
     method: str = "auto"        # screen capture: auto | fast | compatible
+    focus_shape: str = "off"    # only look in the middle: off | circle | square
+    focus_size: int = 50        # its size, percent of the watched picture's shorter side
+    focus_show: bool = True     # draw the zone on screen so you can see it
 
 
 @dataclass
@@ -149,6 +152,9 @@ CHOICES = {
     ("CaptureCfg", "method"): [("auto", "Automatic (fast when it works)"),
                                ("fast", "Fast: Windows Desktop Duplication"),
                                ("compatible", "Compatible: classic screen copy")],
+    ("CaptureCfg", "focus_shape"): [("off", "Whole picture"),
+                                    ("circle", "Circle in the middle"),
+                                    ("square", "Square in the middle")],
     ("DisplayCfg", "mode"): [("overlay", "Overlay on top of the game"),
                              ("mirror", "Separate mirror window")],
     ("DisplayCfg", "theme"): [("dark", "Dark"), ("light", "Light"),
@@ -178,6 +184,7 @@ def default_config():
 # Allowed numeric ranges, (class name, field) -> (min, max). Shared by the control panel and the `mct` tool.
 LIMITS = {
     ("CaptureCfg", "fps"): (5, 120), ("CaptureCfg", "scale"): (20, 100), ("CaptureCfg", "monitor"): (1, 16),
+    ("CaptureCfg", "focus_size"): (5, 100),
     ("DisplayCfg", "ui_font_pt"): (9, 24),
     ("OutlineCfg", "thickness"): (1, 24), ("OutlineCfg", "padding"): (0, 60),
     ("TrackingCfg", "smoothing"): (0, 95), ("TrackingCfg", "hold_frames"): (0, 90),

@@ -410,8 +410,19 @@ class Panel(QMainWindow):
         self._row(f, "capture.method", self._bind("choice", cap, "method", R, "capture.method",
                                                   choices_key=("CaptureCfg", "method")))
         v.addWidget(c)
+
+        c, cl = card("Centre zone")
+        self.zone_card = c
+        f = self._form(cl)
+        self._row(f, "capture.focus_shape", self._bind("choice", cap, "focus_shape", R, "capture.focus_shape",
+                                                       choices_key=("CaptureCfg", "focus_shape")))
+        self._row(f, "capture.focus_size", self._bind("slider", cap, "focus_size", R, "capture.focus_size",
+                                                      lo=5, hi=100, step=5, suffix=" %"))
+        f.addRow("", self._bind("switch", cap, "focus_show", R, "capture.focus_show"))
+        v.addWidget(c)
         v.addStretch(1)
-        self.anchors["watch"] = [self.source_box, self.window_box, self.monitor_box, self.region_btn, self.perf_card]
+        self.anchors["watch"] = [self.source_box, self.window_box, self.monitor_box, self.region_btn, self.perf_card,
+                                 self.zone_card]
         return w
 
     def refresh_sources(self):

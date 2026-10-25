@@ -65,6 +65,17 @@ class Blob:
     area: int
 
 
+def focus_contains(shape, size, fw, fh, x, y):
+    """Is the point (x, y) inside the middle zone of a frame fw x fh? `size` is a percent of the shorter side."""
+    if shape not in ("circle", "square"):
+        return True
+    half = size / 100.0 * min(fw, fh) / 2.0
+    dx, dy = x - fw / 2.0, y - fh / 2.0
+    if shape == "circle":
+        return dx * dx + dy * dy <= half * half
+    return abs(dx) <= half and abs(dy) <= half
+
+
 def detect(frame_bgr, targets, tracking, scale):
     """Find coloured blobs.
 
