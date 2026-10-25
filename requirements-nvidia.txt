@@ -1,0 +1,11 @@
+# NVIDIA build: TensorRT and CUDA acceleration for AI entity detection.
+# Use this INSTEAD of requirements.txt, in its own virtual environment: onnxruntime-gpu and onnxruntime-directml
+# both install the `onnxruntime` module and cannot be installed together. NVIDIA's own libraries (CUDA, cuDNN,
+# TensorRT) are not pip-installed here; see README: NVIDIA acceleration.
+# Keep every other line identical to requirements.txt (tests/test_providers.py checks this).
+PyQt6>=6.5
+mss>=9.0
+numpy>=1.24
+opencv-python-headless>=4.8
+onnxruntime-gpu>=1.20
+dxcam>=0.3; sys_platform == "win32"

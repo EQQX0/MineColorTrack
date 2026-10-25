@@ -127,9 +127,17 @@ TIPS = {
     "detection.confidence": ("Confidence", "How sure the model must be before something is outlined.\n"
                                            "Higher = fewer mistakes but more misses. Lower = finds more, including "
                                            "wrong things.\n40 to 60% is a good start."),
-    "ai.prefer_gpu": ("Use the graphics card when possible", "Runs the model on your graphics card, which is much "
-                                                              "faster.\nTurn off if you see errors or crashes; it "
-                                                              "then runs on the processor."),
+    "ai.device": ("AI device", "Where the model runs. Automatic tries the fastest first and moves on when one "
+                               "does not work:\nTensorRT (NVIDIA, fastest), CUDA (NVIDIA), DirectML (any DirectX 12 "
+                               "graphics card), then the processor.\nTensorRT and CUDA need the NVIDIA build "
+                               "and NVIDIA's CUDA libraries (see Help). Choose Processor only if you see errors."),
+    "ai.tensorrt_fp16": ("TensorRT half precision (FP16)", "Lets TensorRT use 16-bit numbers: faster on RTX cards, "
+                                                           "with the same boxes within a pixel or so.\nOnly used "
+                                                           "with TensorRT. Changing it builds the engine again."),
+    "timings": ("", "How long each step of one frame takes, in milliseconds, averaged over recent frames:\n"
+                    "capture (screen picture), colour (colour targets), preprocess, inference and postprocess (AI "
+                    "model, plus tracking),\ndraw (preparing and painting the outlines). `mct status` shows the "
+                    "same numbers."),
     "entity_switch": ("", "Outline this entity. Turned-off entities are ignored."),
     "entity_colour": ("", "Outline colour for this entity."),
     "open_labeler": ("", "Open the labelling tool: collect screenshots and draw boxes around entities\nto teach "
@@ -279,6 +287,20 @@ It takes about 10 to 30 minutes and downloads <i>minecolortrack_model.onnx</i>.<
 colour), <b>5</b> opens the labelling tool, Google Colab and the training notebook.</p>
 <p>The <b>Confidence</b> slider decides how sure the model must be. Colour targets and AI entities can be used at the
 same time. Training uses Ultralytics YOLO (AGPL-3.0 licence).</p>
+<p><b>AI device</b> chooses where the model runs. <b>Automatic</b> tries the fastest first and moves on by itself
+when one does not work on this PC: <b>TensorRT</b> (NVIDIA, fastest), <b>CUDA</b> (NVIDIA), <b>DirectML</b> (any
+DirectX 12 graphics card: NVIDIA, AMD or Intel) and finally the <b>processor</b>. The line under the model says which
+one is used and, if one was skipped, why. Skipped devices are also written to <i>error.log</i> in the settings
+folder.</p>
+<p>The installer comes with DirectML. TensorRT and CUDA need the NVIDIA build of the AI runtime
+(<i>onnxruntime-gpu</i>, see README: NVIDIA acceleration) and NVIDIA's own libraries, which MineColorTrack does not
+include: a recent NVIDIA driver, the CUDA runtime, cuDNN 9 and, for TensorRT, TensorRT 10. The message under the
+model names any that are missing and the versions needed.</p>
+<p>The first start with <b>TensorRT</b> builds an <i>engine</i> for your model and graphics card. This can take a
+few minutes; colour targets keep working meanwhile and the Entities page shows “Building engine”. The engine
+is saved in the <i>trt_cache</i> folder next to the settings, so later starts take seconds. Changing the model, the
+graphics card or <b>TensorRT half precision (FP16)</b> builds a new one. FP16 is faster on RTX cards and finds the
+same things; boxes may differ by about a pixel.</p>
 """),
     ("labelling", "Labelling screenshots", "help_labeling.png", """
 <ol>
@@ -343,6 +365,9 @@ changes apply live; when it is closed, the settings file is edited.</p>
 <li><b>mct target pick Creeper shot.png 384 140</b> takes a colour from a screenshot;
 <b>mct detect shot.png --out marked.png</b> shows what would be outlined.</li>
 <li><b>mct watch window --title Minecraft</b>, <b>mct start</b>, <b>mct stop</b>, <b>mct screenshot</b></li>
+<li><b>mct set ai.device tensorrt</b> chooses the AI device; <b>mct status</b> shows which one runs and the
+milliseconds per frame for each step; <b>mct model benchmark shot.png</b> times every AI device on a screenshot and
+checks that their boxes match the processor's.</li>
 </ul>
 <p>Settings &gt; <b>Copy instructions for an AI agent</b> copies a ready-made explanation to paste into an agent.</p>
 <p><b>Updates</b>: MineColorTrack looks for a newer version on GitHub when it opens (Settings &gt; Updates) and shows
@@ -360,6 +385,11 @@ Stop and Start again.</li>
 <li><b>The game ignores the controller</b>: click on the game window so it has focus again.</li>
 <li><b>Overlay not visible over the game</b>: the game uses exclusive full screen. Use borderless/windowed mode,
 or the mirror window.</li>
+<li><b>The AI runs slowly, or not on the device you chose</b>: the line under the model on the Entities page
+says which device runs it and why others were skipped (for TensorRT and CUDA: which NVIDIA libraries are missing
+and the versions needed). Choose <b>Processor only</b> under AI device if a graphics card causes errors.</li>
+<li><b>“Building engine” takes long</b>: normal the first time TensorRT runs a model (a few minutes).
+Deleting the <i>trt_cache</i> folder next to the settings file forces a fresh build.</li>
 <li>If something goes wrong, details are written to <i>error.log</i> next to the settings file (Settings,
 Open settings folder).</li>
 </ul>

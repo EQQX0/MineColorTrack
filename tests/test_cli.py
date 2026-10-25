@@ -140,3 +140,38 @@ def test_live_control_of_running_app(tmp_path):
     assert results["toggle"][1]["outline_enabled"] is False and cfg.profile.outline.enabled is False
     assert config.load(path).profile.outline.thickness == 9                   # and saved
     ctl.panel.close()
+
+
+def test_ai_device_setting(cfg_path):
+    keys = {s["key"]: s for s in cli.schema()["settings"]}
+    assert keys["ai.device"]["choices"] == ["auto", "tensorrt", "cuda", "directml", "cpu"]
+    assert keys["ai.device"]["default"] == "auto" and keys["ai.tensorrt_fp16"]["default"] is True
+    assert keys["ai.device"]["help"] and keys["ai.tensorrt_fp16"]["help"]
+    assert "ai.prefer_gpu" not in keys
+    assert run(cfg_path, "get", "ai.device")[1]["value"] == "auto"
+    code, res = run(cfg_path, "set", "ai.device", "tensorrt")
+    assert code == 0 and res["value"] == "tensorrt" and config.load(cfg_path).ai.device == "tensorrt"
+    code, res = run(cfg_path, "set", "ai.device", "gpu")
+    assert code == 1 and "auto, tensorrt, cuda, directml, cpu" in res["error"]
+    assert run(cfg_path, "set", "ai.tensorrt_fp16", "off")[1]["value"] is False
+
+
+def test_old_graphics_card_switch_becomes_ai_device():
+    assert config.from_dict({"version": 2, "ai": {"prefer_gpu": False}}).ai.device == "cpu"
+    assert config.from_dict({"version": 2, "ai": {"prefer_gpu": True}}).ai.device == "auto"
+    assert config.from_dict({"version": 2, "ai": {"prefer_gpu": False, "device": "cuda"}}).ai.device == "cuda"
+    assert config.from_dict({"version": 2, "ai": {"device": "quantum"}}).ai.device == "auto"
+
+
+def test_model_benchmark_command(cfg_path, tmp_path):
+    pytest.importorskip("onnx")
+    import fake_model
+    import cv2
+    model = fake_model.build(str(tmp_path / "m.onnx"))
+    assert run(cfg_path, "model", "benchmark")[0] == 1                       # no model yet
+    assert run(cfg_path, "model", "load", model)[0] == 0
+    shot = str(tmp_path / "shot.png")
+    cv2.imwrite(shot, __import__("numpy").zeros((128, 128, 3), "uint8"))
+    code, res = run(cfg_path, "model", "benchmark", shot, "--runs", "2")
+    assert code == 0 and res["results"][0]["device"] == "cpu" and res["results"][0]["detections"] == 2
+    assert res["results"][0]["ms"]["total"] >= 0 and "CPUExecutionProvider" in res["providers_installed"]

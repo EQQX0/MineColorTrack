@@ -18,6 +18,7 @@ class AssistView(QWidget):
         self.res = None
         self.message = ""
         self.test_colour = None   # solid fill used by the capture self-test
+        self.paint_ms = 0.0       # average time to draw one frame
         if mirror:
             self.setWindowTitle("MineColorTrack - mirror")
             flags = Qt.WindowType.Window
@@ -50,7 +51,14 @@ class AssistView(QWidget):
         return QRectF((self.width() - w) / 2, (self.height() - h) / 2, w, h)
 
     def paintEvent(self, _):
+        t = time.perf_counter()
         p = QPainter(self)
+        self._paint(p)
+        p.end()
+        ms = (time.perf_counter() - t) * 1000.0
+        self.paint_ms = 0.9 * self.paint_ms + 0.1 * ms if self.paint_ms else ms
+
+    def _paint(self, p):
         if self.test_colour is not None:
             p.fillRect(self.rect(), self.test_colour)
             return

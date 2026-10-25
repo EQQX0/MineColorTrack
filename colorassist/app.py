@@ -5,6 +5,7 @@ import argparse
 from dataclasses import asdict
 import threading
 import json
+import logging
 import os
 import sys
 import tempfile
@@ -65,7 +66,7 @@ class Controller:
     def __init__(self, app, cfg, path, interactive=True, start_now=False):
         self.app, self.cfg, self.path = app, cfg, path
         self.interactive = interactive
-        self.engine = engine.Engine(cfg)
+        self.engine = engine.Engine(cfg, config.trt_cache_dir(path))
         ui.apply_theme(app, cfg.display.theme, cfg.display.ui_font_pt)
         self.panel = Panel(cfg, path)
         self.panel.setWindowIcon(app_icon())
@@ -259,8 +260,13 @@ class Controller:
         self.view.message = ""
         self.view.set_result(res)
         self.panel.show_result(res)
+        timings = dict(res.timings)
+        timings["draw"] = round(timings.get("draw", 0.0) + self.view.paint_ms, 2)
+        self.panel.show_timings(timings)
         self.last_status = {"fps": round(res.fps, 1), "targets_in_view": res.count, "capture": res.capture,
-                            "ai_device": res.ai_device, "ai_problem": res.ai_error, "area": list(res.rect)}
+                            "ai_device": res.ai_label or res.ai_device, "ai_problem": res.ai_error,
+                            "ai_status": res.ai_status, "ai_notice": res.ai_notice, "timings_ms": timings,
+                            "area": list(res.rect)}
 
     def on_status(self, text):
         if not self.engine.running and not text.startswith("Capture stopped"):
@@ -591,6 +597,16 @@ def _install_error_log(cfg_path):
     """Windowed builds have no console: write crashes to a log file and tell the user where it is."""
     log_path = os.path.join(os.path.dirname(cfg_path), "error.log")
     shown = []
+    try:                    # warnings such as an AI device that could not start go to the same file
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        handler = logging.FileHandler(log_path, encoding="utf-8", delay=True)
+        handler.setFormatter(logging.Formatter("%(asctime)s " + __version__ + " %(levelname)s %(name)s: %(message)s",
+                                               "%Y-%m-%d %H:%M:%S"))
+        log = logging.getLogger("minecolortrack")
+        log.addHandler(handler)
+        log.setLevel(logging.WARNING)
+    except OSError:
+        pass
 
     def hook(etype, value, tb):
         text = "".join(traceback.format_exception(etype, value, tb))
@@ -692,10 +708,11 @@ def run_selftest(out_path, model_path=None):
             info["providers"] = detector.ort.get_available_providers()
         if model_path:
             frame = np.full((480, 640, 3), 120, np.uint8)
-            for gpu in (True, False):
-                det = detector.Detector(model_path, prefer_gpu=gpu)
+            for device in ("auto", "cpu"):
+                det = detector.Detector(model_path, device=device)
                 found = det.detect(frame, conf=0.3)
-                info["gpu" if gpu else "cpu"] = {"device": det.device, "classes": det.names, "detections": len(found)}
+                info[device] = {"device": det.device_label, "classes": det.names, "detections": len(found),
+                                "skipped": [k for k, _ in det.fallbacks], "notice": det.notice}
         return info
     check("ai_model", ai_check, bool(model_path))
 

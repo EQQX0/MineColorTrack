@@ -21,6 +21,10 @@ included with the packages they come from (inside the installed `_internal` fold
 | ONNX Runtime (onnxruntime-directml, Microsoft) | running AI models | MIT; the included DirectML library is under Microsoft's redistributable licence (see the package's ThirdPartyNotices) |
 | Inno Setup (Jordan Russell, Martijn Laan) | builds the installer (not part of the app) | Inno Setup License |
 
+Not bundled: **NVIDIA CUDA, cuDNN and TensorRT**. The installer contains none of NVIDIA's libraries. People who run
+the NVIDIA build from source (`requirements-nvidia.txt`) install **onnxruntime-gpu** (Microsoft, MIT) and NVIDIA's
+libraries themselves, under NVIDIA's own licence terms. MineColorTrack only looks for them at run time.
+
 Not bundled: the Google Colab training notebook installs and uses **Ultralytics YOLO** (AGPL-3.0) inside
 Colab. Ultralytics considers models trained with it to fall under AGPL-3.0 as well; MineColorTrack itself does
 not include Ultralytics code.

@@ -100,3 +100,47 @@ def test_licence_shown_and_files_present(panel):
             "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"   # official GPL-3.0 text
     assert os.path.exists(os.path.join(root, "THIRD_PARTY_NOTICES.md"))
     assert "GPL v3" in panel.licence_label.text() and "EQQX0" in panel.licence_label.text()
+
+
+def test_ai_device_choice_on_entities_page(panel):
+    combo = panel.device_combo
+    assert [combo.itemData(i) for i in range(combo.count())] == ["auto", "tensorrt", "cuda", "directml", "cpu"]
+    assert combo.toolTip() and panel.fp16_switch.toolTip()
+    combo.setCurrentIndex(combo.findData("cuda"))
+    assert panel.cfg.ai.device == "cuda"
+    panel.fp16_switch.setChecked(False)
+    assert panel.cfg.ai.tensorrt_fp16 is False
+    combo.setCurrentIndex(combo.findData("auto"))
+    panel.fp16_switch.setChecked(True)
+
+
+def test_ai_status_texts_and_timings(panel, tmp_path):
+    pytest.importorskip("onnx")
+    sys.path.insert(0, os.path.dirname(__file__))
+    import fake_model
+    from colorassist import engine
+    det = panel.cfg.profile.detection
+    det.enabled, det.model_path = True, fake_model.build(str(tmp_path / "m.onnx"))
+    det.entities = [config.Entity("pig"), config.Entity("villager")]
+    panel.set_running(True)
+    r = engine.Result()
+    r.ai_status = engine.BUILDING
+    panel.show_result(r)
+    panel._refresh_ai()                                       # a page refresh keeps the engine's state
+    assert panel.model_info.text().startswith("Building engine, this can take a few minutes")
+    r = engine.Result()
+    r.ai_label, r.ai_notice = "DirectML (graphics card)", "TensorRT and CUDA could not start (x). Using DirectML."
+    panel.show_result(r)
+    text = panel.model_info.text()
+    assert text.startswith("2 entities: pig, villager") and "running on DirectML" in text and "could not start" in text
+    r = engine.Result()
+    r.ai_error = "Could not open the model: bad"
+    panel.show_result(r)
+    assert panel.model_info.text() == "Problem: Could not open the model: bad"
+    panel._timings_at = 0
+    panel.show_timings({"capture": 1.25, "colour": 2.0, "inference": 3.5, "draw": 0.5})
+    assert panel.timings_label.text() == "Time per frame (ms): capture 1.2 · colour 2.0 · inference 3.5 · draw 0.5"
+    panel.set_running(False)
+    assert panel.timings_label.text() == "" and panel.model_info.text().startswith("2 entities")
+    det.enabled, det.model_path, det.entities = False, "", []
+    panel._refresh_ai()
