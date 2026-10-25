@@ -70,9 +70,56 @@ Colours cannot tell a creeper from grass. An AI model can, and you make your own
 Labelled datasets from elsewhere (YOLO format, for example a Roboflow "YOLOv8" export) can be merged with
 Import in the labelling tool. Nothing AI-related is built in: no model ships with MineColorTrack.
 
-The app runs models with ONNX Runtime (DirectML, so most graphics cards work). The Colab notebook trains with
+The app runs models with ONNX Runtime. The installer uses DirectML, so most graphics cards work (NVIDIA, AMD,
+Intel); NVIDIA cards can be faster with TensorRT, see [NVIDIA acceleration](#nvidia-acceleration-tensorrt-and-cuda).
+The Colab notebook trains with
 [Ultralytics YOLO](https://docs.ultralytics.com), which is AGPL-3.0; Ultralytics considers models trained with
 it to fall under that licence too. That is fine for personal use; check the licence before sharing models.
+
+## NVIDIA acceleration (TensorRT and CUDA)
+
+**Entities > AI device** chooses where the model runs. **Automatic** (the default) tries the fastest first and moves
+on by itself when one does not start: **TensorRT** (NVIDIA, fastest), **CUDA** (NVIDIA), **DirectML** (any DirectX 12
+graphics card), then the **processor**. A device that is skipped is written to `error.log` and explained under the
+model on the Entities page, including which NVIDIA libraries are missing and which versions are needed.
+
+TensorRT and CUDA need the NVIDIA build of ONNX Runtime (`onnxruntime-gpu`). It cannot be installed next to the
+DirectML build (both provide the `onnxruntime` module), so the installer keeps DirectML and the NVIDIA build runs
+from source in its own environment:
+
+```
+py -3 -m venv .venv-nvidia
+.venv-nvidia\Scripts\activate
+pip install -r requirements-nvidia.txt
+python run.py
+```
+
+MineColorTrack does not include NVIDIA's libraries; install them yourself. For the current `onnxruntime-gpu`
+(1.27 or newer, built with CUDA 13.0; versions 1.21 to 1.26 are built with CUDA 12.8):
+
+1. An NVIDIA graphics card and a recent driver: the 580 series or newer for CUDA 13 (570.65 or newer for CUDA 12.8).
+2. The CUDA runtime and cuDNN 9: either `pip install onnxruntime-gpu[cuda,cudnn]` (puts them in the environment), or
+   NVIDIA's CUDA Toolkit and cuDNN installers with their `bin` folders on `PATH`.
+3. For TensorRT only: TensorRT 10 for the same CUDA major version, with its `lib` folder on `PATH`.
+
+Without them, TensorRT and CUDA are skipped with a message. In the NVIDIA build DirectML is not available, so the
+next step is the processor; in the installer's DirectML build, choosing TensorRT or CUDA falls back to DirectML.
+
+The first time TensorRT runs a model it builds an *engine* for that model and graphics card, which can take a few
+minutes; colour targets keep working and the app shows "Building engine". Engines are saved in
+`%APPDATA%\MineColorTrack\trt_cache`, so later starts take seconds. Changing the model, the card or **TensorRT half
+precision (FP16)** (on by default) builds a new one; deleting the folder forces a rebuild. FP16 is faster on RTX
+cards; boxes stay within about a pixel of full precision.
+
+To see the effect: the Home page shows the milliseconds per frame for capture, colour, preprocess, inference,
+postprocess and draw; `mct status` reports the same as `timings_ms`, plus the AI device in use. `mct model benchmark
+shot.png` times every installed device on a screenshot (TensorRT in FP16 and FP32) and compares each one's boxes with
+the processor's FP32 result.
+
+Version requirements come from the ONNX Runtime documentation for the
+[CUDA](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements) and
+[TensorRT](https://onnxruntime.ai/docs/execution-providers/TensorRT-ExecutionProvider.html#requirements) execution
+providers and NVIDIA's [CUDA release notes](https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/).
 
 ## Command line and AI agents (`mct`)
 
@@ -84,7 +131,7 @@ ready-made explanation to paste into an agent.
 ```
 mct guide                                 # all commands, with examples
 mct schema                                # every setting: type, allowed values, limits, explanation
-mct status                                # running? fps, targets in view, capture method, AI device
+mct status                                # running? fps, targets in view, capture, AI device, ms per stage
 mct get capture.fps
 mct set capture.fps 120
 mct set outline.thickness 8 --profile "Night"
@@ -95,6 +142,8 @@ mct target pick Creeper shot.png 384 140  # colour from a screenshot pixel, with
 mct target set Creeper min_area 200
 mct detect shot.png --out marked.png      # what the current profile would outline
 mct model load C:\models\minecolortrack_model.onnx
+mct set ai.device tensorrt                # auto | tensorrt | cuda | directml | cpu
+mct model benchmark shot.png              # ms per stage on each AI device; boxes compared with the processor
 mct entity set player outline_color "#FF00FF"
 mct start | stop | toggle-outline | screenshot | show | quit
 mct dataset info | import roboflow.zip | export training.zip
@@ -110,7 +159,7 @@ random key stored next to the settings file, so only your Windows user can use i
 | Home | Start/stop, profile, outline switch, a switch per target, what is being watched, overlay or mirror window, crosshair |
 | Watch | Any open window (picked from a list, followed when it moves; matched by title and program), any monitor, or a dragged screen area; frames per second; processing resolution |
 | Targets | Any number of colours per profile with name, hue tolerance, saturation and brightness range, size limits and outline colour; on-screen colour picker that suggests tolerances; live preview |
-| Entities | AI detection on/off, load your .onnx model, confidence, graphics card or processor, a switch and outline colour per entity, labelling tool, Google Colab, training notebook, dataset folder |
+| Entities | AI detection on/off, load your .onnx model, confidence, AI device (automatic, TensorRT, CUDA, DirectML or processor) and TensorRT FP16, a switch and outline colour per entity, labelling tool, Google Colab, training notebook, dataset folder |
 | Outline | Box, corner brackets or ellipse; thickness; spacing; black backing line; per-target or single colour; arrow or dot marker; names; blinking; dashed "last seen" outline |
 | Tracking | Smoothing, how long a lost target stays marked, joining pieces into one target, speck filter |
 | Hotkeys | Global hotkeys that work while the game has focus (defaults: Ctrl+Alt+A start/stop, Ctrl+Alt+P next profile, Ctrl+Alt+O outline on/off, Ctrl+Alt+S save screenshot for labelling) |
@@ -120,7 +169,8 @@ random key stored next to the settings file, so only your Windows user can use i
 There are no built-in presets: every target and profile is your own. Use Home > Manage profiles to make new
 empty profiles or duplicates. Updating from 1.0 or 1.1 removes the presets those versions created (unless you
 changed them) and the old PS Remote Play window default; everything you made yourself is kept.
-Settings file: `%APPDATA%\MineColorTrack\config.json`. Crash details, if any: `error.log` in the same folder.
+Settings file: `%APPDATA%\MineColorTrack\config.json`. Crash details and skipped AI devices, if any: `error.log` in
+the same folder. TensorRT engines: `trt_cache` in the same folder.
 
 ## Overlay vs. mirror window
 
@@ -148,6 +198,9 @@ py -3 -m pip install -r requirements.txt
 py -3 run.py
 py -3 -m pip install pytest pillow && py -3 -m pytest tests
 ```
+
+For TensorRT/CUDA, use `requirements-nvidia.txt` instead, in a separate virtual environment (see NVIDIA
+acceleration). The provider tests mock `onnxruntime.get_available_providers()`, so no graphics card is needed.
 
 Releases are built by `.github/workflows/release.yml` on a Windows runner when a `v*` tag is pushed:
 unit tests, PyInstaller (`packaging/MineColorTrack.spec`), a `--selftest` of the built app, the Inno Setup

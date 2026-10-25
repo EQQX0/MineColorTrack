@@ -365,6 +365,9 @@ changes apply live; when it is closed, the settings file is edited.</p>
 <li><b>mct target pick Creeper shot.png 384 140</b> takes a colour from a screenshot;
 <b>mct detect shot.png --out marked.png</b> shows what would be outlined.</li>
 <li><b>mct watch window --title Minecraft</b>, <b>mct start</b>, <b>mct stop</b>, <b>mct screenshot</b></li>
+<li><b>mct set ai.device tensorrt</b> chooses the AI device; <b>mct status</b> shows which one runs and the
+milliseconds per frame for each step; <b>mct model benchmark shot.png</b> times every AI device on a screenshot and
+checks that their boxes match the processor's.</li>
 </ul>
 <p>Settings &gt; <b>Copy instructions for an AI agent</b> copies a ready-made explanation to paste into an agent.</p>
 <p><b>Updates</b>: MineColorTrack looks for a newer version on GitHub when it opens (Settings &gt; Updates) and shows
@@ -382,6 +385,11 @@ Stop and Start again.</li>
 <li><b>The game ignores the controller</b>: click on the game window so it has focus again.</li>
 <li><b>Overlay not visible over the game</b>: the game uses exclusive full screen. Use borderless/windowed mode,
 or the mirror window.</li>
+<li><b>The AI runs slowly, or not on the device you chose</b>: the line under the model on the Entities page
+says which device runs it and why others were skipped (for TensorRT and CUDA: which NVIDIA libraries are missing
+and the versions needed). Choose <b>Processor only</b> under AI device if a graphics card causes errors.</li>
+<li><b>“Building engine” takes long</b>: normal the first time TensorRT runs a model (a few minutes).
+Deleting the <i>trt_cache</i> folder next to the settings file forces a fresh build.</li>
 <li>If something goes wrong, details are written to <i>error.log</i> next to the settings file (Settings,
 Open settings folder).</li>
 </ul>
