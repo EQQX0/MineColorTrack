@@ -83,8 +83,6 @@ class CaptureCfg:
 @dataclass
 class DisplayCfg:
     mode: str = "overlay"
-    crosshair: bool = False
-    crosshair_color: str = "#00FFFF"
     mirror_on_top: bool = False
     ui_font_pt: int = 12
     theme: str = "dark"
@@ -189,7 +187,7 @@ LIMITS = {
     ("Target", "val_min"): (0, 100), ("Target", "val_max"): (0, 100),
     ("Target", "min_area"): (1, 200000), ("Target", "max_area"): (0, 2000000),
 }
-COLOUR_FIELDS = {"color", "outline_color", "crosshair_color"}
+COLOUR_FIELDS = {"color", "outline_color"}
 
 
 def convert(obj, attr, text):

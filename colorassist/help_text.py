@@ -19,9 +19,6 @@ TIPS = {
                                       "Clicks pass straight through it.\n"
                                       "Mirror window: shows a copy of the watched picture with outlines in its own "
                                       "window, for example on a second monitor."),
-    "display.crosshair": ("Crosshair at the centre of the picture", "Draw a cross in the middle of the watched picture,\nto help find the screen centre."),
-    "display.crosshair_color": ("Crosshair colour", "Colour of the centre cross. A black border is always drawn "
-                                                    "around it so it stays visible."),
     # Watch
     "capture.source": ("Watch", "What to scan for your target colours:\n"
                                 "- An open window: follows that window when it moves or is resized.\n"
@@ -346,7 +343,6 @@ capture so MineColorTrack never detects its own drawings; if that is not possibl
 mirror window automatically and tells you.</li>
 <li><b>Mirror window</b> shows a copy of the watched picture with outlines in a separate, resizable window,
 for example on a second monitor. Keep the game itself visible somewhere (not minimised).</li>
-<li><b>Crosshair</b> marks the centre of the watched picture.</li>
 </ul>
 """),
     ("profiles", "Profiles, hotkeys and settings", None, """

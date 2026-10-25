@@ -360,9 +360,6 @@ class Panel(QMainWindow):
         disp = lambda: self.cfg.display
         self._row(f, "display.mode", self._bind("choice", disp, "mode", R, "display.mode",
                                                 choices_key=("DisplayCfg", "mode"), after=self.displayModeChanged.emit))
-        f.addRow("", self._bind("switch", disp, "crosshair", R, "display.crosshair"))
-        self._row(f, "display.crosshair_color", self._bind("colour", disp, "crosshair_color", R,
-                                                           "display.crosshair_color"))
         v.addWidget(c)
         v.addStretch(1)
         self.anchors["home"] = [self.start_btn, self.profile_box, self.home_outline, self.home_targets_card,

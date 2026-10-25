@@ -168,7 +168,7 @@ random key stored next to the settings file, so only your Windows user can use i
 
 | Page | Options |
 |---|---|
-| Home | Start/stop, profile, outline switch, a switch per target, what is being watched, overlay or mirror window, crosshair |
+| Home | Start/stop, profile, outline switch, a switch per target, what is being watched, overlay or mirror window |
 | Watch | Any open window (picked from a list, followed when it moves; matched by title and program), any monitor, or a dragged screen area; frames per second; processing resolution |
 | Targets | Any number of colours per profile with name, hue tolerance, saturation and brightness range, size limits and outline colour; on-screen colour picker that suggests tolerances; live preview |
 | Entities | AI detection on/off, load your .onnx model, confidence, AI device (automatic, TensorRT, CUDA, DirectML or processor) and TensorRT FP16, a switch and outline colour per entity, labelling tool, Google Colab, training notebook, dataset folder |

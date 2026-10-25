@@ -209,7 +209,6 @@ def main():
 
     # 6. Overlay vs mirror
     c3 = example_config(full=False)
-    c3.display.crosshair = True
     over = render_view(c3, scene, False, (480, 270))
     mirror = render_view(c3, scene, True, (480, 300))
     img = sheet(1040, 380)

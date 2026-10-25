@@ -80,13 +80,6 @@ class AssistView(QWidget):
 
         if prof.outline.enabled:
             self._outlines(p, res, vr, sx, sy, prof.outline)
-        if self.cfg.display.crosshair:
-            c = vr.center()
-            col = QColor(self.cfg.display.crosshair_color)
-            for w, colr in ((6, QColor(0, 0, 0)), (2, col)):
-                p.setPen(QPen(colr, w))
-                p.drawLine(QPointF(c.x() - 14, c.y()), QPointF(c.x() + 14, c.y()))
-                p.drawLine(QPointF(c.x(), c.y() - 14), QPointF(c.x(), c.y() + 14))
         if self.mirror and self.message:
             self._text(p, QPointF(20, 40), self.message, QColor("#FFFFFF"))
 
