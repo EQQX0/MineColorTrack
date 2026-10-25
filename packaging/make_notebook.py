@@ -1,4 +1,4 @@
-# Copyright (C) 2026 EQQX2
+# Copyright (C) 2026 EQQX0
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Writes colorassist/assets/train_minecolortrack.ipynb (the Google Colab training notebook).
 

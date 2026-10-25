@@ -169,7 +169,7 @@ Help page text, `app.py` wiring, tray, self-test. Help pictures are rendered by
 
 ## Licence
 
-Copyright (C) 2026 EQQX2.
+Copyright (C) 2026 EQQX0.
 
 MineColorTrack is free software: you can redistribute it and/or modify it under the terms of the GNU General
 Public License as published by the Free Software Foundation, either version 3 of the License, or (at your

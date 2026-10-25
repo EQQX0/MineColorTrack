@@ -1,4 +1,4 @@
-# Copyright (C) 2026 EQQX2
+# Copyright (C) 2026 EQQX0
 # SPDX-License-Identifier: GPL-3.0-or-later
 """`mct`: command-line control of MineColorTrack for people and AI agents.
 

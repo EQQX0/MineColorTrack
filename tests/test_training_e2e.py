@@ -1,4 +1,4 @@
-# Copyright (C) 2026 EQQX2
+# Copyright (C) 2026 EQQX0
 # SPDX-License-Identifier: GPL-3.0-or-later
 """End-to-end check of the AI pipeline: label -> export zip -> the Colab notebook's own code -> ONNX -> Detector.
 

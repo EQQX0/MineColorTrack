@@ -1,6 +1,6 @@
 # Third-party software
 
-MineColorTrack is Copyright (C) 2026 EQQX2 and licensed under the GNU General Public License,
+MineColorTrack is Copyright (C) 2026 EQQX0 and licensed under the GNU General Public License,
 version 3 or (at your option) any later version. See `LICENSE`. Source code:
 https://github.com/EQQX0/MineColorTrack
 

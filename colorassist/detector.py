@@ -1,4 +1,4 @@
-# Copyright (C) 2026 EQQX2
+# Copyright (C) 2026 EQQX0
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Runs a YOLO object-detection model (.onnx, e.g. trained with the Colab notebook) on captured frames.
 

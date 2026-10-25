@@ -1,4 +1,4 @@
-# Copyright (C) 2026 EQQX2
+# Copyright (C) 2026 EQQX0
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Command-line entry point: `python mct.py ...` from source, or mct.exe when installed."""
 import sys

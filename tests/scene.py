@@ -1,4 +1,4 @@
-# Copyright (C) 2026 EQQX2
+# Copyright (C) 2026 EQQX0
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Synthetic blocky Minecraft-like frame for tests (BGR numpy array)."""
 import numpy as np

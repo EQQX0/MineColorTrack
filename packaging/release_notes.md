@@ -24,7 +24,7 @@ Every setting has a tooltip, and the **Help** page explains everything with pict
 
 ## What's new in 1.6.3
 
-- MineColorTrack is now free software under the **GNU GPL v3 or later** (Copyright (C) 2026 EQQX2).
+- MineColorTrack is now free software under the **GNU GPL v3 or later** (Copyright (C) 2026 EQQX0).
   The licence and a list of the bundled third-party software are installed with the app and shown under
   Settings > About.
 

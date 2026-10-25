@@ -1,4 +1,4 @@
-# Copyright (C) 2026 EQQX2
+# Copyright (C) 2026 EQQX0
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Builds the real control panel off-screen and checks every control explains itself."""
 import os
@@ -95,7 +95,8 @@ def test_licence_shown_and_files_present(panel):
     import hashlib
     root = os.path.join(os.path.dirname(__file__), "..")
     with open(os.path.join(root, "LICENSE"), "rb") as fh:
-        assert hashlib.sha256(fh.read()).hexdigest() == \
+        text = fh.read().replace(b"\r\n", b"\n")          # Windows checkouts use CRLF line endings
+        assert hashlib.sha256(text).hexdigest() == \
             "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"   # official GPL-3.0 text
     assert os.path.exists(os.path.join(root, "THIRD_PARTY_NOTICES.md"))
-    assert "GPL v3" in panel.licence_label.text() and "EQQX2" in panel.licence_label.text()
+    assert "GPL v3" in panel.licence_label.text() and "EQQX0" in panel.licence_label.text()

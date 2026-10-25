@@ -1,5 +1,5 @@
 ; Inno Setup script: wraps the PyInstaller output into one MineColorTrack-Setup-<version>.exe
-; Copyright (C) 2026 EQQX2. SPDX-License-Identifier: GPL-3.0-or-later
+; Copyright (C) 2026 EQQX0. SPDX-License-Identifier: GPL-3.0-or-later
 ; Build: ISCC.exe /DMyAppVersion=1.0.0 packaging\MineColorTrack.iss   (after PyInstaller)
 
 #ifndef MyAppVersion
@@ -14,7 +14,7 @@ AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher=EQQX0
-AppCopyright=Copyright (C) 2026 EQQX2, GNU GPL v3 or later
+AppCopyright=Copyright (C) 2026 EQQX0, GNU GPL v3 or later
 AppPublisherURL=https://github.com/EQQX0/MineColorTrack
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
