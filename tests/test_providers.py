@@ -41,6 +41,8 @@ class FakeSessions:
     def __call__(self, path, sess_options=None, providers=None):
         first = providers[0][0] if isinstance(providers[0], tuple) else providers[0]
         self.calls.append(providers)
+        if first in self.drop:
+            print("*** EP Error *** Falling back to ['CPUExecutionProvider'] and retrying.")   # as ONNX Runtime does
         if first in self.fail:
             raise RuntimeError("LoadLibrary failed with error 126 for %s" % first)
         sess = self.real(path, sess_options=sess_options, providers=[CPU])
@@ -102,6 +104,15 @@ def test_tensorrt_used_with_fp16_and_engine_cache(tmp_path, providers, monkeypat
     assert not detector.needs_trt_build(model, "auto", True, cache)
     assert detector.needs_trt_build(model, "auto", False, cache)
     assert not detector.needs_trt_build(model, "cuda", True, cache)
+
+
+def test_onnxruntime_fallback_text_stays_off_stdout(tmp_path, providers, monkeypatch, capsys, caplog):
+    providers(CUDA, CPU)
+    FakeSessions(monkeypatch, drop={CUDA})
+    with caplog.at_level(logging.INFO, logger="minecolortrack.ai"):
+        det = detector.Detector(fake_model.build(str(tmp_path / "m.onnx")))
+    assert det.provider == "cpu" and capsys.readouterr().out == ""     # `mct` prints only JSON there
+    assert any("EP Error" in r.getMessage() for r in caplog.records)
 
 
 def test_falls_back_and_logs_when_nvidia_libraries_missing(tmp_path, providers, monkeypatch, caplog):

@@ -12,8 +12,10 @@ graphics card, onnxruntime-directml package) and the processor. A provider that 
 logged and skipped.
 """
 import ast
+import contextlib
 import glob
 import hashlib
+import io
 import logging
 import os
 import sys
@@ -43,6 +45,20 @@ _LABEL = {p[0]: p[2] for p in PROVIDERS}
 
 class ModelError(Exception):
     pass
+
+
+@contextlib.contextmanager
+def _ort_output_to_log():
+    """ONNX Runtime prints provider fallbacks ("EP Error ... Falling back") to standard output, which would spoil
+    the `mct` tool's JSON. Catch that text and keep it in the log instead."""
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            yield
+    finally:
+        text = " ".join(buf.getvalue().split())
+        if text:
+            log.info("onnxruntime: %s", text[:2000])
 
 
 def available():
@@ -244,7 +260,8 @@ class Detector:
         chain, self.notes = plan(device)
         if chain[0][0] in ("tensorrt", "cuda") and hasattr(ort, "preload_dlls"):
             try:                              # finds CUDA/cuDNN installed as pip packages (onnxruntime-gpu >= 1.21)
-                ort.preload_dlls()
+                with _ort_output_to_log():
+                    ort.preload_dlls()
             except Exception as exc:
                 log.info("preload_dlls: %s", exc)
         have = available_providers()
@@ -316,7 +333,8 @@ class Detector:
         else:
             providers = [name]
         providers.append("CPUExecutionProvider")
-        sess = ort.InferenceSession(self.path, sess_options=self._options(key), providers=providers)
+        with _ort_output_to_log():
+            sess = ort.InferenceSession(self.path, sess_options=self._options(key), providers=providers)
         active = sess.get_providers()
         if not active or active[0] != name:          # ONNX Runtime quietly fell back to another provider
             raise RuntimeError("ONNX Runtime started %s instead" % (active[0] if active else "nothing"))
