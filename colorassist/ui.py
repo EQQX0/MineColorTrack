@@ -10,14 +10,15 @@ from PyQt6.QtWidgets import (QAbstractButton, QDoubleSpinBox, QFrame, QHBoxLayou
                              QSlider, QSpinBox, QVBoxLayout, QWidget)
 
 THEMES = {
-    "dark": dict(bg="#14161B", surface="#1D2027", surface2="#272B34", input="#111318", border="#363B47",
-                 text="#ECEEF2", muted="#A1A7B3", accent="#4ADE80", accent_text="#06210F",
-                 danger="#F05252", danger_text="#FFFFFF"),
-    "light": dict(bg="#F3F4F6", surface="#FFFFFF", surface2="#EEF0F3", input="#FFFFFF", border="#CDD2DA",
-                  text="#14161A", muted="#545B68", accent="#15803D", accent_text="#FFFFFF",
-                  danger="#C81E1E", danger_text="#FFFFFF"),
+    # Surfaces are separated by a step in tone, not by outlines; `edge` is only drawn in the high-contrast theme.
+    "dark": dict(bg="#0D1014", surface="#161A20", surface2="#212630", input="#0D1014", border="#2E3440",
+                 edge="transparent", text="#F1F3F6", muted="#9AA2B1", accent="#3DDC84", accent_text="#04200F",
+                 danger="#FF5C5C", danger_text="#1A0505"),
+    "light": dict(bg="#EEF0F3", surface="#FFFFFF", surface2="#E3E6EB", input="#F6F7F9", border="#C4CAD3",
+                  edge="transparent", text="#101318", muted="#4F5663", accent="#12753A", accent_text="#FFFFFF",
+                  danger="#C21F1F", danger_text="#FFFFFF"),
     "contrast": dict(bg="#000000", surface="#000000", surface2="#1A1A1A", input="#000000", border="#FFFFFF",
-                     text="#FFFFFF", muted="#FFE600", accent="#FFE600", accent_text="#000000",
+                     edge="#FFFFFF", text="#FFFFFF", muted="#FFE600", accent="#FFE600", accent_text="#000000",
                      danger="#FF4D4D", danger_text="#000000"),
 }
 
@@ -54,50 +55,53 @@ def stylesheet(t, pt):
 QMainWindow, QDialog, QWidget#page, QWidget#central {{ background: {bg}; }}
 QWidget {{ color: {text}; }}
 QScrollArea {{ background: transparent; border: none; }}
-QFrame#card {{ background: {surface}; border: 1px solid {border}; border-radius: 14px; }}
+QFrame#card {{ background: {surface}; border: 1px solid {edge}; border-radius: 20px; }}
 QLabel {{ background: transparent; }}
-QLabel#h1 {{ font-size: {h1}pt; font-weight: 700; }}
-QLabel#h2 {{ font-size: {h2}pt; font-weight: 600; }}
+QLabel#h1 {{ font-size: {h1}pt; font-weight: 800; }}
+QLabel#h2 {{ font-size: {h2}pt; font-weight: 700; }}
 QLabel#muted {{ color: {muted}; }}
-QLabel#brand {{ font-size: {h2}pt; font-weight: 800; color: {accent}; padding: 6px 8px 14px 8px; }}
-QLabel#preview {{ background: {input}; border: 1px solid {border}; border-radius: 10px; color: {muted}; }}
-QPushButton, QToolButton {{ background: {surface2}; border: 1px solid {border}; border-radius: 10px;
-    padding: 8px 16px; }}
-QPushButton:hover, QToolButton:hover {{ border-color: {accent}; }}
+QLabel#brand {{ font-size: {pt}pt; font-weight: 800; color: {text}; padding: 6px 8px 18px 8px; }}
+QLabel#preview {{ background: {input}; border: 1px solid {edge}; border-radius: 14px; color: {muted}; }}
+QPushButton, QToolButton {{ background: {surface2}; border: 1px solid {edge}; border-radius: 20px; padding: 8px 20px; min-height: 24px; }}
+QPushButton:hover, QToolButton:hover {{ background: {border}; border-color: {edge}; }}
 QPushButton:focus, QToolButton:focus {{ border: 2px solid {accent}; }}
 QPushButton:disabled {{ color: {muted}; }}
 QPushButton#primary {{ background: {accent}; color: {accent_text}; border: 2px solid {accent}; font-weight: 700; }}
+QPushButton#primary:hover {{ background: {accent}; border-color: {text}; }}
 QPushButton#danger {{ background: {danger}; color: {danger_text}; border: 2px solid {danger}; font-weight: 700; }}
+QPushButton#danger:hover {{ background: {danger}; border-color: {text}; }}
 QPushButton#primary:focus, QPushButton#danger:focus {{ border: 2px solid {text}; }}
-QPushButton#big {{ font-size: {h2}pt; padding: 14px 30px; border-radius: 14px; }}
+QPushButton#big {{ font-size: {h2}pt; padding: 16px 38px; border-radius: 30px; min-height: 28px; }}
 QToolButton::menu-indicator {{ image: none; }}
-QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {{ background: {input}; border: 1px solid {border};
-    border-radius: 8px; padding: 6px 10px; selection-background-color: {accent}; selection-color: {accent_text}; }}
+QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {{ background: {surface2}; border: 2px solid {edge};
+    border-radius: 12px; padding: 7px 12px; selection-background-color: {accent}; selection-color: {accent_text}; }}
+QLineEdit:hover, QSpinBox:hover, QDoubleSpinBox:hover, QComboBox:hover {{ background: {border}; }}
 QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{ border: 2px solid {accent}; }}
-QComboBox::drop-down {{ border: none; width: 28px; }}
-QComboBox QAbstractItemView {{ background: {surface}; border: 1px solid {border}; outline: none;
-    selection-background-color: {accent}; selection-color: {accent_text}; padding: 4px; }}
-QWidget#side {{ background: {surface}; border-right: 1px solid {border}; }}
-QListWidget#nav {{ background: transparent; border: none; padding: 10px; outline: none; }}
-QListWidget#nav::item {{ padding: 11px 14px; border-radius: 10px; margin: 2px 0; color: {muted}; }}
+QComboBox::drop-down {{ border: none; width: 30px; }}
+QComboBox QAbstractItemView {{ background: {surface2}; border: 1px solid {edge}; outline: none;
+    selection-background-color: {accent}; selection-color: {accent_text}; padding: 6px; }}
+QWidget#side {{ background: {surface}; border-right: 1px solid {edge}; }}
+QListWidget#nav {{ background: transparent; border: none; padding: 8px 12px; outline: none; }}
+QListWidget#nav::item {{ padding: 12px 16px; border-radius: 18px; margin: 3px 0; color: {muted}; }}
 QListWidget#nav::item:hover {{ background: {surface2}; color: {text}; }}
-QListWidget#nav::item:selected {{ background: {surface2}; color: {text}; border-left: 4px solid {accent}; font-weight: 600; }}
-QListWidget#targets {{ background: {input}; border: 1px solid {border}; border-radius: 10px; padding: 4px; outline: none; }}
-QListWidget#targets::item {{ padding: 9px; border-radius: 8px; }}
+QListWidget#nav::item:selected {{ background: {accent}; color: {accent_text}; font-weight: 700; }}
+QListWidget#targets {{ background: {surface2}; border: 1px solid {edge}; border-radius: 14px; padding: 6px; outline: none; }}
+QListWidget#targets::item {{ padding: 10px; border-radius: 10px; }}
 QListWidget#targets::item:selected {{ background: {accent}; color: {accent_text}; }}
-QSlider::groove:horizontal {{ height: 6px; background: {border}; border-radius: 3px; }}
-QSlider::sub-page:horizontal {{ background: {accent}; border-radius: 3px; }}
-QSlider::handle:horizontal {{ background: {text}; width: 20px; height: 20px; margin: -8px 0; border-radius: 10px; }}
+QSlider::groove:horizontal {{ height: 8px; background: {surface2}; border-radius: 4px; }}
+QSlider::sub-page:horizontal {{ background: {accent}; border-radius: 4px; }}
+QSlider::handle:horizontal {{ background: {text}; width: 22px; height: 22px; margin: -7px 0; border-radius: 11px; }}
 QSlider::handle:horizontal:hover {{ background: {accent}; }}
 QScrollBar:vertical {{ background: transparent; width: 12px; margin: 2px; }}
-QScrollBar::handle:vertical {{ background: {border}; border-radius: 5px; min-height: 40px; }}
+QScrollBar::handle:vertical {{ background: {surface2}; border-radius: 5px; min-height: 40px; }}
+QScrollBar::handle:vertical:hover {{ background: {border}; }}
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
 QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background: transparent; }}
-QToolTip {{ background: {surface}; color: {text}; border: 1px solid {border}; padding: 6px; }}
-QMenu {{ background: {surface}; border: 1px solid {border}; padding: 6px; }}
-QMenu::item {{ padding: 7px 22px; border-radius: 6px; }}
+QToolTip {{ background: {surface2}; color: {text}; border: 1px solid {edge}; padding: 8px; }}
+QMenu {{ background: {surface2}; border: 1px solid {edge}; padding: 8px; }}
+QMenu::item {{ padding: 8px 24px; border-radius: 10px; }}
 QMenu::item:selected {{ background: {accent}; color: {accent_text}; }}
-""".format(pt=pt, h1=pt + 9, h2=pt + 3, **t)
+""".format(pt=pt, h1=pt + 14, h2=pt + 4, **t)
 
 
 def apply_theme(app, name, pt):
@@ -167,10 +171,10 @@ class ToggleSwitch(QAbstractButton):
         tr = self._track()
         on = self.isChecked()
         enabled = self.isEnabled()
-        track = QColor(CURRENT["accent"] if on else CURRENT["surface2"])
+        track = QColor(CURRENT["accent"] if on else CURRENT["border"])
         if not enabled:
             track.setAlpha(110)
-        p.setPen(Qt.PenStyle.NoPen if on else QPen(QColor(CURRENT["border"]), 2))
+        p.setPen(Qt.PenStyle.NoPen if on or CURRENT["edge"] == "transparent" else QPen(QColor(CURRENT["border"]), 2))
         p.setBrush(track)
         p.drawRoundedRect(tr.adjusted(1, 1, -1, -1), tr.height() / 2 - 1, tr.height() / 2 - 1)
         if self.hasFocus():
@@ -243,7 +247,7 @@ class ColourButton(QPushButton):
         fg = readable_text(hexcol)
         self.setText(hexcol)
         self.setStyleSheet("QPushButton { background: %s; color: %s; font-weight: 700; border: 2px solid %s; "
-                           "border-radius: 10px; padding: 8px 16px; } QPushButton:focus { border: 3px solid %s; }"
+                           "border-radius: 20px; padding: 8px 20px; min-height: 24px; } QPushButton:focus { border: 3px solid %s; }"
                            % (hexcol, fg, CURRENT["border"], CURRENT["text"]))
 
 
@@ -273,7 +277,7 @@ def swatch(hexcol, size=18):
     lb = QLabel()
     lb.setFixedSize(size, size)
     lb.setStyleSheet("background: %s; border: 1px solid %s; border-radius: %dpx;"
-                     % (hexcol, CURRENT["border"], size // 4))
+                     % (hexcol, CURRENT["edge"], size // 2))
     return lb
 
 

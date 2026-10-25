@@ -65,7 +65,7 @@ class Panel(QMainWindow):
         side = QWidget()
         side.setObjectName("side")
         side.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        side.setFixedWidth(220)
+        side.setFixedWidth(240)
         sl = QVBoxLayout(side)
         sl.setContentsMargins(0, 12, 0, 0)
         sl.setSpacing(0)
@@ -112,8 +112,8 @@ class Panel(QMainWindow):
     def _page(self, title, subtitle, help_key=None):
         w = QWidget()
         v = QVBoxLayout(w)
-        v.setContentsMargins(32, 26, 32, 26)
-        v.setSpacing(18)
+        v.setContentsMargins(40, 34, 40, 34)
+        v.setSpacing(22)
         head = QHBoxLayout()
         head.addWidget(label(title, "h1"), 1)
         if help_key:
@@ -1196,7 +1196,7 @@ class Panel(QMainWindow):
         b = self.start_btn
         b.setText("■  Stop" if self.running else "▶  Start")
         b.setObjectName("danger" if self.running else "primary")
-        b.setStyleSheet("QPushButton { font-size: %dpt; padding: 14px 30px; border-radius: 14px; }"
+        b.setStyleSheet("QPushButton { font-size: %dpt; padding: 16px 38px; border-radius: 30px; min-height: 28px; }"
                         % (self.cfg.display.ui_font_pt + 3))
         b.style().unpolish(b)
         b.style().polish(b)
