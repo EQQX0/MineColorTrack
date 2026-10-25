@@ -10,11 +10,14 @@ import numpy as np
 from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtGui import QImage
 
-from . import capture, detector, vision, winplat
+from . import capture, config, detector, vision, winplat
 
 _MSS = getattr(mss, "MSS", None) or mss.mss   # mss 10 renamed the factory
 ENTITY_BASE = 1000                              # tracker ids at or above this are AI entities, below are colour targets
 PALETTE = ["#FFE600", "#00E5FF", "#FF3DFF", "#FF8A00", "#7CFF4F", "#FF4F6E", "#9D7CFF", "#FFFFFF"]
+# Milliseconds per frame are measured for these stages ("draw" adds the window's painting, measured by the view)
+STAGES = ("capture", "colour", "preprocess", "inference", "postprocess", "draw")
+BUILDING = "Building engine, this can take a few minutes"
 
 
 def to_qimage(bgr):
@@ -31,7 +34,7 @@ def to_qimage(bgr):
 class Result:
     """One processed frame. Coordinates are in captured-frame pixels."""
     __slots__ = ("rect", "frame_size", "tracks", "frame_img", "preview_img", "fps", "count", "ai_device",
-                 "ai_error", "capture")
+                 "ai_label", "ai_error", "ai_status", "ai_notice", "capture", "timings")
 
     def __init__(self):
         self.rect = None
@@ -41,8 +44,12 @@ class Result:
         self.fps = 0.0
         self.count = 0
         self.ai_device = None       # "GPU"/"CPU" while a model runs
-        self.ai_error = None
+        self.ai_label = None        # where it runs, e.g. "TensorRT FP16 (NVIDIA)"
+        self.ai_error = None        # the model cannot be used
+        self.ai_status = None       # loading or building, e.g. BUILDING
+        self.ai_notice = None       # devices that were skipped, and why
         self.capture = ""           # which capture method produced the frame
+        self.timings = {}           # stage -> milliseconds, averaged over recent frames
 
 
 def clamp_rect(rect, bounds):
@@ -59,9 +66,10 @@ class Engine(QObject):
     result = pyqtSignal(object)
     status = pyqtSignal(str)
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, cache_dir=None):
         super().__init__()
         self.cfg = cfg
+        self.cache_dir = cache_dir or config.trt_cache_dir()   # TensorRT engines, built once per model and GPU
         self.want_frame = False         # mirror mode needs the raw frame image
         self.preview_target = None      # index of target whose mask to preview
         self.last_frame = None          # latest raw BGR frame, for the colour picker
@@ -70,6 +78,10 @@ class Engine(QObject):
         self._detector = None
         self._detector_key = None
         self._detector_error = None
+        self._loading_key = None        # model being loaded in the background, and what to tell the person
+        self._ai_status = None
+        self._load_lock = threading.Lock()
+        self._ms = {}                   # running averages of the stage times
         self._thread = None
         self._stop = threading.Event()
 
@@ -138,9 +150,11 @@ class Engine(QObject):
                     self._stop.wait(0.5)
                     continue
             cap = capture.get(self.cfg.capture.method)
+            tg = time.perf_counter()
             frame = cap.grab(rect)
+            grabbed = time.perf_counter()
             self.last_frame, self.last_rect = frame, rect
-            res = self.process(frame, rect)
+            res = self.process(frame, rect, capture_ms=(grabbed - tg) * 1000.0)
             res.capture = cap.label
             self.result.emit(res)
 
@@ -152,37 +166,70 @@ class Engine(QObject):
             budget = 1.0 / max(1, self.cfg.capture.fps)
             self._stop.wait(max(0.0, budget - (time.perf_counter() - t0)))
 
-    def _get_detector(self, path, device, fp16):
-        key = (path, device, fp16)
-        if key != self._detector_key:
-            self._detector_key = key
-            self._detector, self._detector_error = None, None
-            try:
-                self._detector = detector.Detector(path, device, fp16)
-            except Exception as exc:          # bad file, missing runtime, unsupported model...
-                self._detector_error = str(exc)
-        return self._detector
+    def _load(self, key):
+        path, device, fp16, cache_dir = key
+        det, error = None, None
+        try:
+            det = detector.Detector(path, device, fp16, cache_dir)
+        except Exception as exc:              # bad file, missing runtime, unsupported model...
+            error = str(exc)
+        with self._load_lock:
+            if self._loading_key in (None, key):      # not replaced by newer settings meanwhile
+                self._detector, self._detector_error, self._detector_key = det, error, key
+                self._loading_key, self._ai_status = None, None
 
-    def process(self, frame, rect):
+    def _get_detector(self, path, device, fp16):
+        key = (path, device, fp16, self.cache_dir)
+        if key == self._detector_key:
+            return self._detector
+        if threading.current_thread() is not self._thread:
+            self._load(key)                   # a one-off call (mct detect, tests): load right here
+            return self._detector
+        with self._load_lock:                 # live capture: load in the background, colour targets keep going
+            if key != self._loading_key:
+                self._loading_key = key
+                try:
+                    build = detector.needs_trt_build(path, device, fp16, self.cache_dir)
+                except Exception:
+                    build = False
+                self._ai_status = BUILDING if build else "Loading the AI model"
+                threading.Thread(target=self._load, args=(key,), name="MineColorTrackModel", daemon=True).start()
+        return None
+
+    def _average(self, ms):
+        """Smooth the stage times over recent frames; stages not measured this frame are dropped."""
+        old = self._ms
+        self._ms = {k: (0.9 * old[k] + 0.1 * v) if k in old else v for k, v in ms.items()}
+        return {k: round(v, 2) for k, v in self._ms.items()}
+
+    def process(self, frame, rect, capture_ms=None):
         prof = self.cfg.profile
         targets = list(prof.targets)
         scale = self.cfg.capture.scale / 100.0
+        ms = {} if capture_ms is None else {"capture": capture_ms}
+        t = time.perf_counter()
         blobs, small, _ = vision.detect(frame, targets, prof.tracking, scale)
+        ms["colour"] = (time.perf_counter() - t) * 1000.0
 
         res = Result()
         det_cfg = prof.detection
         names, entities = [], {}
         if det_cfg.enabled and det_cfg.model_path:
             det = self._get_detector(det_cfg.model_path, self.cfg.ai.device, self.cfg.ai.tensorrt_fp16)
-            res.ai_error = self._detector_error
+            if det is None and self._loading_key is not None:
+                res.ai_status = self._ai_status
+            else:
+                res.ai_error = self._detector_error
             if det is not None:
-                res.ai_device = det.device
+                res.ai_device, res.ai_label, res.ai_notice = det.device, det.device_label, det.notice
                 names = det.names
                 entities = {e.name: e for e in det_cfg.entities}
                 allowed = {i for i, n in enumerate(names) if n not in entities or entities[n].enabled}
                 if allowed:
                     for d in det.detect(frame, conf=max(1, det_cfg.confidence) / 100.0, allowed=allowed):
                         blobs.append(vision.Blob(ENTITY_BASE + d.cls, d.x, d.y, d.w, d.h, int(d.w * d.h)))
+                    ms.update(det.last_ms)
+        t_track = time.perf_counter()
         tracks = self._tracker.update(blobs, prof.tracking.smoothing, prof.tracking.hold_frames)
 
         res.rect = rect
@@ -203,7 +250,9 @@ class Engine(QObject):
             tg = targets[t.target]
             res.tracks.append((*t.box.tolist(), t.missed > 0, tg.name, tg.outline_color))
         res.count = sum(1 for t in tracks if t.missed == 0)
+        ms["postprocess"] = ms.get("postprocess", 0.0) + (time.perf_counter() - t_track) * 1000.0
 
+        t = time.perf_counter()
         if self.want_frame:
             res.frame_img = to_qimage(frame)
 
@@ -214,6 +263,8 @@ class Engine(QObject):
             ph = 180
             pw = max(1, int(pm.shape[1] * ph / pm.shape[0]))
             res.preview_img = to_qimage(cv2.resize(pm, (pw, ph), interpolation=cv2.INTER_NEAREST))
+        ms["draw"] = (time.perf_counter() - t) * 1000.0     # picture conversion; the view adds its painting
+        res.timings = self._average(ms)
         return res
 
 

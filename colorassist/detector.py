@@ -449,3 +449,41 @@ def compare_detections(reference, other, min_iou=0.5):
     return {"reference": len(reference), "other": len(other), "matched": matched,
             "missing": len(reference) - matched, "extra": len(left), "max_shift_px": round(shift, 2),
             "max_confidence_change": round(conf_diff, 4), "min_iou": round(worst_iou if matched else 0.0, 4)}
+
+
+def benchmark(path, image, runs=50, cache_dir=None, conf=0.4, devices=None):
+    """Time each device on one picture and compare its boxes with the processor's FP32 result (the reference).
+    Returns a list with one entry per device: load time, ms per stage, detections, and the comparison."""
+    have = available_providers()
+    variants = [("cpu", False)]
+    for key, name, _ in PROVIDERS:
+        if key != "cpu" and name in have:
+            variants += [("tensorrt", True), ("tensorrt", False)] if key == "tensorrt" else [(key, False)]
+    if devices:
+        variants = [v for v in variants if v[0] == "cpu" or v[0] in devices]
+    results, reference = [], None
+    for key, fp16 in variants:
+        entry = {"device": key, "fp16": fp16}
+        t = time.perf_counter()
+        det = Detector(path, device=key, fp16=fp16, cache_dir=cache_dir)
+        entry["load_seconds"] = round(time.perf_counter() - t, 2)
+        if det.provider != key:
+            entry["skipped"] = det.notice or "did not start"
+            results.append(entry)
+            continue
+        found = det.detect(image, conf=conf)
+        totals = dict.fromkeys(("preprocess", "inference", "postprocess"), 0.0)
+        for _ in range(max(1, runs)):
+            found = det.detect(image, conf=conf)
+            for k in totals:
+                totals[k] += det.last_ms[k]
+        entry["label"] = det.device_label
+        entry["ms"] = {k: round(v / max(1, runs), 3) for k, v in totals.items()}
+        entry["ms"]["total"] = round(sum(entry["ms"].values()), 3)
+        entry["detections"] = len(found)
+        if reference is None:
+            reference = found
+        else:
+            entry["vs_cpu_fp32"] = compare_detections(reference, found)
+        results.append(entry)
+    return results

@@ -43,6 +43,9 @@ Colour targets (in the active profile, or --profile NAME)
   mct target remove NAME
 AI model and entities
   mct model load FILE.onnx | mct model clear | mct model info
+  mct model benchmark [IMAGE] [--runs 50] [--devices tensorrt,cuda,directml]
+                                     ms per stage on each AI device, and how close each device's boxes are to
+                                     the processor's (FP32) on that picture. Use a real screenshot as IMAGE.
   mct entity list | mct entity set NAME enabled|outline_color VALUE
 Testing settings on a picture
   mct detect IMAGE [--out marked.png]  what the current profile would outline in IMAGE (JSON boxes)
@@ -334,6 +337,8 @@ def cmd_model(b, a):
             except Exception as exc:
                 info["problem"] = str(exc)
         return info
+    if a.action == "benchmark":
+        return model_benchmark(b, a, det)
     if a.action == "clear":
         det.model_path, det.enabled, det.entities = "", False, []
     elif a.action == "load":
@@ -353,6 +358,32 @@ def cmd_model(b, a):
     b.save(cfg)
     return {"ok": True, "model_path": det.model_path, "enabled": det.enabled,
             "entities": [asdict(e) for e in det.entities], "applied_live": b.live}
+
+
+def model_benchmark(b, a, det):
+    import numpy as np
+    from . import detector
+    from .dataset import read_image
+    if not det.model_path:
+        raise CliError("No model loaded. Use `mct model load FILE.onnx` first.")
+    if a.file:
+        img = read_image(a.file)
+        if img is None:
+            raise CliError("Cannot read image %s" % a.file)
+    else:
+        img = np.full((720, 1280, 3), 110, np.uint8)
+    devices = [d.strip() for d in a.devices.split(",")] if a.devices else None
+    try:
+        results = detector.benchmark(det.model_path, img, runs=a.runs, cache_dir=config.trt_cache_dir(b.path),
+                                     conf=max(1, det.confidence) / 100.0, devices=devices)
+    except detector.ModelError as exc:
+        raise CliError(str(exc))
+    info = {"model": det.model_path, "image": a.file or "(plain grey picture: times only, no boxes to compare)",
+            "size": [img.shape[1], img.shape[0]], "runs": a.runs, "onnxruntime": getattr(detector.ort, "__version__", None),
+            "providers_installed": detector.available_providers(), "results": results}
+    if detector.cuda_build_version() and detector.runtime_package() == "gpu":
+        info["cuda_build"] = detector.cuda_build_version()
+    return info
 
 
 def cmd_entity(b, a):
@@ -577,10 +608,12 @@ def build_parser():
         p.add_argument("--" + opt.replace("_", "-"), dest=opt)
     p.add_argument("--outline", dest="outline_color")
 
-    p = sub.add_parser("model", help="AI model: load, clear, info")
-    p.add_argument("action", choices=["load", "clear", "info"])
-    p.add_argument("file", nargs="?")
+    p = sub.add_parser("model", help="AI model: load, clear, info, benchmark")
+    p.add_argument("action", choices=["load", "clear", "info", "benchmark"])
+    p.add_argument("file", nargs="?", help="load: the .onnx file   benchmark: a screenshot to test on")
     p.add_argument("--profile")
+    p.add_argument("--runs", type=int, default=50, help="benchmark: pictures per device (default 50)")
+    p.add_argument("--devices", help="benchmark: comma-separated, e.g. tensorrt,cuda (default: all installed)")
     p = sub.add_parser("entity", help="AI entities: list, set")
     p.add_argument("action", choices=["list", "set"])
     p.add_argument("name", nargs="?")

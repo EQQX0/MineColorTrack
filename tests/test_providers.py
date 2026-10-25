@@ -178,3 +178,88 @@ def test_compare_detections():
     assert abs(c["max_confidence_change"] - 0.01) < 1e-6
     c = detector.compare_detections(ref, [D(0, 10, 10, 20, 40, 0.9), D(0, 300, 300, 5, 5, 0.5)])
     assert (c["matched"], c["missing"], c["extra"]) == (1, 1, 1)
+
+
+def test_engine_loads_model_in_background_and_shows_building(tmp_path, monkeypatch):
+    import threading
+    from colorassist import config, engine
+    cfg = config.default_config()
+    det_cfg = cfg.profile.detection
+    det_cfg.enabled, det_cfg.model_path = True, fake_model.build(str(tmp_path / "m.onnx"))
+    cfg.profile.targets = [config.Target(name="green", color="#00FF00", min_area=10)]
+    release, real = threading.Event(), detector.Detector
+
+    def slow_detector(path, device, fp16, cache_dir):
+        release.wait(10)                                    # a TensorRT engine build that takes a while
+        return real(path, "cpu", fp16, cache_dir)
+    monkeypatch.setattr(detector, "Detector", slow_detector)
+    monkeypatch.setattr(detector, "needs_trt_build", lambda *a: True)
+    eng = engine.Engine(cfg, str(tmp_path / "trt_cache"))
+    eng._thread = threading.current_thread()                # behave as inside the live capture loop
+    frame = np.zeros((128, 128, 3), np.uint8)
+    frame[10:40, 10:40] = (0, 255, 0)
+    res = eng.process(frame, (0, 0, 128, 128), capture_ms=2.0)
+    assert res.ai_status == engine.BUILDING and res.ai_error is None
+    assert [t[5] for t in res.tracks] == ["green"]          # colour targets keep working meanwhile
+    assert set(res.timings) == {"capture", "colour", "postprocess", "draw"}
+    release.set()
+    for _ in range(200):
+        if eng._loading_key is None:
+            break
+        __import__("time").sleep(0.02)
+    res = eng.process(frame, (0, 0, 128, 128), capture_ms=2.0)
+    assert res.ai_status is None and res.ai_error is None and res.ai_label == "processor (CPU)", res.ai_error
+    assert sorted(t[5] for t in res.tracks) == ["green", "pig", "villager"]
+    assert set(res.timings) == set(engine.STAGES) and all(v >= 0 for v in res.timings.values())
+
+
+def test_changed_settings_replace_a_load_in_progress(tmp_path, monkeypatch):
+    import threading
+    from colorassist import config, engine
+    cfg = config.default_config()
+    cfg.profile.detection.enabled = True
+    cfg.profile.detection.model_path = fake_model.build(str(tmp_path / "m.onnx"))
+    monkeypatch.setattr(detector, "needs_trt_build", lambda *a: False)
+    eng = engine.Engine(cfg, str(tmp_path / "c"))
+    eng._loading_key = ("old", "auto", True, "c")            # an older load still running ...
+    eng._load(("old", "auto", True, "c"))                   # ... finishes: it may not be used for the new key
+    eng._loading_key = ("new", "cpu", True, "c")
+    eng._load(("old", "auto", True, "c"))
+    assert eng._detector_key == ("old", "auto", True, "c") and eng._loading_key == ("new", "cpu", True, "c")
+    eng._thread = threading.current_thread()
+    res = eng.process(np.zeros((64, 64, 3), np.uint8), (0, 0, 64, 64))
+    assert res.ai_status == "Loading the AI model"
+
+
+def test_warnings_go_to_error_log(tmp_path):
+    import logging
+    from colorassist import app
+    old_hook, logger = sys.excepthook, logging.getLogger("minecolortrack")
+    before = list(logger.handlers)
+    try:
+        app._install_error_log(str(tmp_path / "config.json"))
+        logging.getLogger("minecolortrack.ai").warning("AI provider TensorrtExecutionProvider failed: test")
+        for h in logger.handlers:
+            h.flush()
+        text = (tmp_path / "error.log").read_text(encoding="utf-8")
+        assert "WARNING minecolortrack.ai: AI provider TensorrtExecutionProvider failed: test" in text
+    finally:
+        for h in logger.handlers[len(before):]:
+            logger.removeHandler(h)
+            h.close()
+        sys.excepthook = old_hook
+
+
+def test_benchmark_compares_devices_with_cpu(tmp_path, providers, monkeypatch):
+    providers(TRT, CUDA, CPU)
+    FakeSessions(monkeypatch, fail={CUDA})
+    model = fake_model.build(str(tmp_path / "m.onnx"))
+    res = detector.benchmark(model, np.zeros((128, 128, 3), np.uint8), runs=3, cache_dir=str(tmp_path / "c"),
+                             conf=0.5)
+    by = {(r["device"], r["fp16"]): r for r in res}
+    assert list(by) == [("cpu", False), ("tensorrt", True), ("tensorrt", False), ("cuda", False)]
+    assert by[("cpu", False)]["detections"] == 2 and set(by[("cpu", False)]["ms"]) == {
+        "preprocess", "inference", "postprocess", "total"}
+    same = by[("tensorrt", True)]["vs_cpu_fp32"]            # fake TensorRT runs the CPU model: identical boxes
+    assert same["matched"] == 2 and same["missing"] == same["extra"] == 0 and same["max_shift_px"] == 0
+    assert "skipped" in by[("cuda", False)] and "CUDA could not start" in by[("cuda", False)]["skipped"]

@@ -161,3 +161,17 @@ def test_old_graphics_card_switch_becomes_ai_device():
     assert config.from_dict({"version": 2, "ai": {"prefer_gpu": True}}).ai.device == "auto"
     assert config.from_dict({"version": 2, "ai": {"prefer_gpu": False, "device": "cuda"}}).ai.device == "cuda"
     assert config.from_dict({"version": 2, "ai": {"device": "quantum"}}).ai.device == "auto"
+
+
+def test_model_benchmark_command(cfg_path, tmp_path):
+    pytest.importorskip("onnx")
+    import fake_model
+    import cv2
+    model = fake_model.build(str(tmp_path / "m.onnx"))
+    assert run(cfg_path, "model", "benchmark")[0] == 1                       # no model yet
+    assert run(cfg_path, "model", "load", model)[0] == 0
+    shot = str(tmp_path / "shot.png")
+    cv2.imwrite(shot, __import__("numpy").zeros((128, 128, 3), "uint8"))
+    code, res = run(cfg_path, "model", "benchmark", shot, "--runs", "2")
+    assert code == 0 and res["results"][0]["device"] == "cpu" and res["results"][0]["detections"] == 2
+    assert res["results"][0]["ms"]["total"] >= 0 and "CPUExecutionProvider" in res["providers_installed"]

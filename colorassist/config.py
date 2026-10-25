@@ -308,6 +308,11 @@ def default_path():
     return os.path.join(os.path.expanduser("~"), ".config", "minecolortrack", "config.json")
 
 
+def trt_cache_dir(config_path=None):
+    """Folder for TensorRT engines, next to the settings file (%APPDATA%\\MineColorTrack\\trt_cache)."""
+    return os.path.join(os.path.dirname(os.path.abspath(config_path or default_path())), "trt_cache")
+
+
 def load(path):
     if not os.path.exists(path):
         return default_config()

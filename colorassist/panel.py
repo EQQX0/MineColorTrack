@@ -4,6 +4,7 @@
 import copy
 import os
 import shutil
+import time
 
 from PyQt6.QtCore import Qt, QTimer, QUrl, pyqtSignal
 from PyQt6.QtGui import QAction, QColor, QDesktopServices, QPixmap
@@ -281,6 +282,10 @@ class Panel(QMainWindow):
         self.status = label("Press Start, then click back into your game.", "muted")
         st.addWidget(self.status_title)
         st.addWidget(self.status)
+        self.timings_label = label("", "muted")
+        self.timings_label.setToolTip(tip("timings"))
+        self._timings_at = 0.0
+        st.addWidget(self.timings_label)
         row.addLayout(st, 1)
         cl.addLayout(row)
         prow = QHBoxLayout()
@@ -571,6 +576,8 @@ class Panel(QMainWindow):
         mrow.addWidget(self._button("Clear", "clear_model", self.clear_model))
         self._row(f, "model_file", mrow)
         self.model_info = label("", "muted")
+        self.model_info.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.model_info.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         f.addRow("", self.model_info)
         self.confidence_slider = self._bind("slider", d, "confidence", R, "detection.confidence", lo=5, hi=95,
                                             suffix=" %")
@@ -674,7 +681,12 @@ class Panel(QMainWindow):
     def _ai_edited(self):
         self._refresh_ai()
 
-    def _refresh_ai(self, device=None, error=None):
+    def _refresh_ai(self, *state):
+        """Model and entity texts. `state`: (device label, error, status, notice) from the running engine;
+        without it the last known state is kept (it is cleared when watching stops)."""
+        if state:
+            self._ai_state = state
+        device, error, status, notice = getattr(self, "_ai_state", (None,) * 4)
         det = self.cfg.profile.detection
         self.dataset_label.setText(self.dataset_root())
         names, problem = [], None
@@ -687,13 +699,20 @@ class Panel(QMainWindow):
         self.model_label.setToolTip(det.model_path or tip("model_file"))
         if not detector.available():
             info = "The AI runtime is missing from this installation."
+        elif status == engine.BUILDING:
+            info = ("%s. TensorRT is preparing this model for your graphics card; colour targets keep working "
+                    "meanwhile. The engine is saved, so this happens once per model and graphics card." % status)
+        elif status:
+            info = "%s..." % status
         elif problem or error:
             info = "Problem: %s" % (problem or error)
         elif det.model_path:
             info = "%d entit%s: %s%s" % (len(names), "y" if len(names) == 1 else "ies", ", ".join(names),
-                                         (" \u00b7 running on the %s" % device) if device else "")
+                                         (" \u00b7 running on %s" % device) if device else "")
         else:
             info = "Load a model you trained, or make one with the labelling tool."
+        if notice and det.model_path and not (problem or error or status):
+            info += "\n" + notice
         self.model_info.setText(info)
         on = [e.name for e in det.entities if e.enabled]
         if not det.model_path:
@@ -1177,6 +1196,8 @@ class Panel(QMainWindow):
         self.status_title.setText("Running" if running else "Stopped")
         if not running:
             self.status.setText("Press Start, then click back into your game.")
+            self.timings_label.setText("")
+            self._refresh_ai(None, None, None, None)
         self._emit_preview()
 
     def set_status(self, text):
@@ -1194,18 +1215,28 @@ class Panel(QMainWindow):
                                 "the thing you want outlined.")
         else:
             self.status_title.setText("Running · %d target%s in view" % (res.count, "" if res.count == 1 else "s"))
-            self.status.setText("%.0f fps · %s · profile “%s”%s"
+            self.status.setText("%.0f fps · %s · profile “%s”%s%s"
                                 % (res.fps, self.watch_text(), self.cfg.active_profile,
-                                   (" · " + res.capture) if res.capture else ""))
-        if (res.ai_device, res.ai_error) != getattr(self, "_ai_state", (None, None)):
-            self._ai_state = (res.ai_device, res.ai_error)
-            self._refresh_ai(res.ai_device, res.ai_error)
+                                   (" · " + res.capture) if res.capture else "",
+                                   (" · AI: %s..." % res.ai_status) if res.ai_status else ""))
+        state = (res.ai_label, res.ai_error, res.ai_status, res.ai_notice)
+        if state != getattr(self, "_ai_state", (None,) * 4):
+            self._refresh_ai(*state)
         if res.preview_img is not None:
             pm = QPixmap.fromImage(res.preview_img)
             lw = max(100, self.preview_label.width() - 16)
             if pm.width() < lw:
                 pm = pm.scaledToWidth(min(lw, pm.width() * 3), Qt.TransformationMode.FastTransformation)
             self.preview_label.setPixmap(pm)
+
+    def show_timings(self, ms):
+        """Small 'time per frame' readout under the status (updated a few times a second)."""
+        now = time.monotonic()
+        if now - self._timings_at < 0.3:
+            return
+        self._timings_at = now
+        parts = ["%s %.1f" % (k, ms[k]) for k in engine.STAGES if k in ms]
+        self.timings_label.setText("Time per frame (ms): " + " · ".join(parts) if parts else "")
 
     def closeEvent(self, e):
         if self.cfg.display.close_to_tray:

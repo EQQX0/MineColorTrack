@@ -134,6 +134,10 @@ TIPS = {
     "ai.tensorrt_fp16": ("TensorRT half precision (FP16)", "Lets TensorRT use 16-bit numbers: faster on RTX cards, "
                                                            "with the same boxes within a pixel or so.\nOnly used "
                                                            "with TensorRT. Changing it builds the engine again."),
+    "timings": ("", "How long each step of one frame takes, in milliseconds, averaged over recent frames:\n"
+                    "capture (screen picture), colour (colour targets), preprocess, inference and postprocess (AI "
+                    "model, plus tracking),\ndraw (preparing and painting the outlines). `mct status` shows the "
+                    "same numbers."),
     "entity_switch": ("", "Outline this entity. Turned-off entities are ignored."),
     "entity_colour": ("", "Outline colour for this entity."),
     "open_labeler": ("", "Open the labelling tool: collect screenshots and draw boxes around entities\nto teach "
