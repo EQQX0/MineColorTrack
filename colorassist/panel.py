@@ -196,7 +196,11 @@ class Panel(QMainWindow):
         elif kind == "slider":
             w = SliderField(lo, hi, step, decimals, suffix)
             cast = float if decimals else int
-            w.valueChanged.connect(lambda v: self._set(getter, attr, cast(round(v, decimals)), after))
+            # `after` can be heavy (the text-size slider restyles the whole app): run it once on release, not per tick
+            w.valueChanged.connect(lambda v: self._set(getter, attr, cast(round(v, decimals)),
+                                                       None if w.slider.isSliderDown() else after))
+            if after:
+                w.slider.sliderReleased.connect(after)
             load = lambda o: w.setValue(getattr(o, attr))
             w.slider.setToolTip(tiptext)
             w.spin.setToolTip(tiptext)

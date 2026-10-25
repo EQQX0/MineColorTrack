@@ -7,7 +7,7 @@ import tempfile
 from PyQt6.QtCore import QPointF, QRectF, QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QImage, QPainter, QPalette, QPen, QPolygonF
 from PyQt6.QtWidgets import (QAbstractButton, QDoubleSpinBox, QFrame, QHBoxLayout, QLabel, QPushButton,
-                             QSlider, QSpinBox, QVBoxLayout, QWidget)
+                             QSlider, QSpinBox, QStyle, QVBoxLayout, QWidget)
 
 THEMES = {
     # Surfaces are separated by a step in tone, not by outlines; `edge` is only drawn in the high-contrast theme.
@@ -192,6 +192,37 @@ class ToggleSwitch(QAbstractButton):
                        Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, self.text())
 
 
+class JumpSlider(QSlider):
+    """A slider whose handle goes straight to where you press and follows the mouse from there."""
+
+    def _value_at(self, x):
+        half = 11                                   # half the handle width, so the handle centres on the mouse
+        span = max(1, self.width() - 2 * half)
+        return QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), int(x) - half, span)
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.MouseButton.LeftButton:
+            self.setSliderDown(True)
+            self.setValue(self._value_at(e.position().x()))
+            e.accept()
+        else:
+            super().mousePressEvent(e)
+
+    def mouseMoveEvent(self, e):
+        if self.isSliderDown():
+            self.setValue(self._value_at(e.position().x()))
+            e.accept()
+        else:
+            super().mouseMoveEvent(e)
+
+    def mouseReleaseEvent(self, e):
+        if e.button() == Qt.MouseButton.LeftButton and self.isSliderDown():
+            self.setSliderDown(False)
+            e.accept()
+        else:
+            super().mouseReleaseEvent(e)
+
+
 class SliderField(QWidget):
     """Slider plus an exact-value box, kept in sync."""
     valueChanged = pyqtSignal(float)
@@ -202,7 +233,7 @@ class SliderField(QWidget):
         lay = QHBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(12)
-        self.slider = QSlider(Qt.Orientation.Horizontal)
+        self.slider = JumpSlider(Qt.Orientation.Horizontal)
         self.slider.setRange(int(round(lo * self.k)), int(round(hi * self.k)))
         self.slider.setSingleStep(max(1, int(round(step * self.k))))
         self.slider.setPageStep(max(1, int(round(step * self.k * 5))))
