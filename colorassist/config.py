@@ -108,6 +108,13 @@ class AICfg:
 
 
 @dataclass
+class ExportCfg:
+    enabled: bool = False       # write detections to a file while running
+    path: str = ""              # "" = detections.json next to the settings file
+    history: bool = False       # also append every frame to a .jsonl file next to it
+
+
+@dataclass
 class UpdateCfg:
     check_on_start: bool = True
     skip_version: str = ""      # "Skip this version" remembers it here
@@ -119,6 +126,7 @@ class AppConfig:
     display: DisplayCfg = field(default_factory=DisplayCfg)
     hotkeys: HotkeysCfg = field(default_factory=HotkeysCfg)
     ai: AICfg = field(default_factory=AICfg)
+    export: ExportCfg = field(default_factory=ExportCfg)
     updates: UpdateCfg = field(default_factory=UpdateCfg)
     active_profile: str = ""
     profiles: dict = field(default_factory=dict)

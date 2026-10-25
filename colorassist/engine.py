@@ -1,6 +1,7 @@
 # Copyright (C) 2026 EQQX0
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Background worker: capture -> colour and AI detection -> tracking, handed to the GUI as a Result."""
+import os
 import threading
 import time
 
@@ -10,7 +11,7 @@ import numpy as np
 from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtGui import QImage
 
-from . import capture, config, detector, vision, winplat
+from . import capture, config, detection_log, detector, vision, winplat
 
 _MSS = getattr(mss, "MSS", None) or mss.mss   # mss 10 renamed the factory
 ENTITY_BASE = 1000                              # tracker ids at or above this are AI entities, below are colour targets
@@ -34,12 +35,13 @@ def to_qimage(bgr):
 class Result:
     """One processed frame. Coordinates are in captured-frame pixels."""
     __slots__ = ("rect", "frame_size", "tracks", "frame_img", "preview_img", "fps", "count", "ai_device",
-                 "ai_label", "ai_error", "ai_status", "ai_notice", "capture", "timings")
+                 "ai_label", "ai_error", "ai_status", "ai_notice", "capture", "timings", "kinds")
 
     def __init__(self):
         self.rect = None
         self.frame_size = (1, 1)
         self.tracks = []            # (x, y, w, h, held, name, outline_hex)
+        self.kinds = []             # "colour" or "entity", one per track
         self.frame_img = self.preview_img = None
         self.fps = 0.0
         self.count = 0
@@ -84,6 +86,9 @@ class Engine(QObject):
         self._ms = {}                   # running averages of the stage times
         self._thread = None
         self._stop = threading.Event()
+        self._writer = None             # live detections file, see detection_log
+        self._writer_key = None
+        self._frame_no = 0
 
     @property
     def running(self):
@@ -102,6 +107,7 @@ class Engine(QObject):
         if self._thread:
             self._thread.join(timeout=2)
         self._thread = None
+        self._close_export()
 
     def reset_tracking(self):
         self._tracker.reset()
@@ -156,6 +162,7 @@ class Engine(QObject):
             self.last_frame, self.last_rect = frame, rect
             res = self.process(frame, rect, capture_ms=(grabbed - tg) * 1000.0)
             res.capture = cap.label
+            self._export(res)
             self.result.emit(res)
 
             now = time.perf_counter()
@@ -165,6 +172,28 @@ class Engine(QObject):
             self._fps = fps_avg
             budget = 1.0 / max(1, self.cfg.capture.fps)
             self._stop.wait(max(0.0, budget - (time.perf_counter() - t0)))
+
+    def _close_export(self):
+        if self._writer is not None:
+            self._writer.close()
+        self._writer, self._writer_key = None, None
+
+    def _export(self, res):
+        """Write this frame's detections to the live file when Settings > export is on."""
+        ex = self.cfg.export
+        key = (ex.path, ex.history) if ex.enabled else None
+        if key != self._writer_key:                   # switched on, off or moved while running
+            self._close_export()
+            self._writer_key = key
+            if key:
+                path = ex.path or os.path.join(os.path.dirname(self.cache_dir), "detections.json")
+                try:
+                    self._writer = detection_log.DetectionWriter(path, ex.history)
+                except OSError as exc:
+                    self.status.emit("Cannot write the detections file: %s" % exc)
+        if self._writer is not None:
+            self._frame_no += 1
+            self._writer.push(detection_log.record(res, self._frame_no))
 
     def _load(self, key):
         path, device, fp16, cache_dir = key
@@ -244,11 +273,13 @@ class Engine(QObject):
                 ent = entities.get(names[cls])
                 colour = ent.outline_color if ent else PALETTE[cls % len(PALETTE)]
                 res.tracks.append((*t.box.tolist(), t.missed > 0, names[cls], colour))
+                res.kinds.append("entity")
                 continue
             if t.target >= len(targets):
                 continue
             tg = targets[t.target]
             res.tracks.append((*t.box.tolist(), t.missed > 0, tg.name, tg.outline_color))
+            res.kinds.append("colour")
         res.count = sum(1 for t in tracks if t.missed == 0)
         ms["postprocess"] = ms.get("postprocess", 0.0) + (time.perf_counter() - t_track) * 1000.0
 

@@ -15,7 +15,7 @@ from dataclasses import asdict, fields, is_dataclass
 
 from . import APP_NAME, COPYRIGHT, LICENSE_NAME, SOURCE_URL, __version__, config, ipc
 
-GLOBAL_SECTIONS = ("capture", "display", "hotkeys", "ai")
+GLOBAL_SECTIONS = ("capture", "display", "hotkeys", "ai", "export")
 PROFILE_SECTIONS = ("outline", "tracking", "detection")
 
 GUIDE = """MineColorTrack command-line guide (for people and AI agents)

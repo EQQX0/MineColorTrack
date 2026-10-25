@@ -134,6 +134,13 @@ TIPS = {
     "ai.tensorrt_fp16": ("TensorRT half precision (FP16)", "Lets TensorRT use 16-bit numbers: faster on RTX cards, "
                                                            "with the same boxes within a pixel or so.\nOnly used "
                                                            "with TensorRT. Changing it builds the engine again."),
+    "export.enabled": ("Write detections to a file", "While running, writes what is found each frame to "
+                                                      "detections.json so another program can read it.\nNothing is "
+                                                      "sent anywhere else."),
+    "export.path": ("Detections file", "Where to write detections.json. Empty = next to the settings file "
+                                       "(%APPDATA%\\MineColorTrack)."),
+    "export.history": ("Also keep every frame", "Also appends every frame to a .jsonl file beside the detections "
+                                                "file, one line per frame. It grows without limit while on."),
     "timings": ("", "How long each step of one frame takes, in milliseconds, averaged over recent frames:\n"
                     "capture (screen picture), colour (colour targets), preprocess, inference and postprocess (AI "
                     "model, plus tracking),\ndraw (preparing and painting the outlines). `mct status` shows the "
