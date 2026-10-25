@@ -77,6 +77,9 @@ Colours cannot tell a creeper from grass. An AI model can, and you make your own
    About 10 to 30 minutes later the browser downloads `minecolortrack_model.onnx`.
 5. **Entities > Load model**, switch on the entities you want, press Start.
 
+A player model ships with the app and is loaded in new profiles: open **Entities**, switch on the AI model and press Start.
+Load your own model there to replace it.
+
 Labelled datasets from elsewhere (YOLO format, for example a Roboflow "YOLOv8" export) can be merged with
 Import in the labelling tool. Nothing AI-related is built in: no model ships with MineColorTrack.
 

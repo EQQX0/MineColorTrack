@@ -174,9 +174,16 @@ CHOICES = {
 STARTER_PROFILE = "My profile"
 
 
+BUNDLED_MODEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "models", "default.onnx")
+
+
 def default_profiles():
-    """No built-in content: one empty profile that people fill with their own targets."""
-    return {STARTER_PROFILE: Profile()}
+    """One profile with no targets, but with the bundled player model loaded (AI stays off until switched on)."""
+    prof = Profile()
+    if os.path.isfile(BUNDLED_MODEL):
+        prof.detection.model_path = BUNDLED_MODEL
+        prof.detection.entities = [Entity(name="player")]
+    return {STARTER_PROFILE: prof}
 
 
 def default_config():
@@ -352,6 +359,10 @@ def from_dict(data):
     if not isinstance(old_version, int) or old_version < 2:
         _migrate_v1(cfg)
     cfg.version = 2
+    for prof in cfg.profiles.values():      # the app folder moved (update, reinstall): follow the bundled model
+        mp = prof.detection.model_path
+        if mp and not os.path.exists(mp) and os.path.basename(mp) == "default.onnx"                 and os.path.isfile(BUNDLED_MODEL):
+            prof.detection.model_path = BUNDLED_MODEL
     if not cfg.profiles:
         cfg.profiles = default_profiles()
     cfg.profile  # normalises active_profile

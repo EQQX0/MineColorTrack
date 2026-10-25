@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 # models, TensorRT engines and caches, local settings and logs: never committed
 *.onnx
+!colorassist/assets/models/default.onnx
 *.engine
 *.timing
 *.profile
