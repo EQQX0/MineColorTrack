@@ -13,7 +13,7 @@ It only draws on screen. It never sends controller, mouse or keyboard input to t
 1. **Capture**: grabs frames of a window, monitor or screen area.
 2. **Colour targets**: you pick a colour and it finds things of that colour, filtered by size.
 3. **AI entities** (optional): your own trained model finds things colour can't tell apart, like creepers vs grass.
-4. **Tracking**: smooths the outlines and keeps a lost target marked for a moment.
+4. **Tracking** (Outline, Advanced): smooths the outlines and keeps a lost target marked for a moment.
 5. **Display**: draws outlines in an overlay on the game, or in a separate mirror window.
 6. **Live export**: writes each frame's detections to `detections.json` so other programs can read them
    (turn it on with `mct set export.enabled on`).
@@ -172,8 +172,7 @@ random key stored next to the settings file, so only your Windows user can use i
 | Watch | Any open window (picked from a list, followed when it moves; matched by title and program), any monitor, or a dragged screen area; frames per second; processing resolution; optional circle or square zone in the middle (only look there) with its own colour and see-through line and inside |
 | Targets | Any number of colours per profile with name, hue tolerance, saturation and brightness range, size limits and outline colour; on-screen colour picker that suggests tolerances; live preview |
 | Entities | AI detection on/off, load your .onnx model, confidence, AI device (automatic, TensorRT, CUDA, DirectML or processor) and TensorRT FP16, a switch and outline colour per entity, labelling tool, Google Colab, training notebook, dataset folder |
-| Outline | Box, corner brackets or ellipse; thickness; spacing; black backing line; per-target or single colour; arrow or dot marker; names; blinking; dashed "last seen" outline |
-| Tracking | Smoothing, how long a lost target stays marked, joining pieces into one target, speck filter |
+| Outline | Box, corner brackets or ellipse; thickness; spacing; black backing line; per-target or single colour; arrow or dot marker; names; blinking; dashed "last seen" outline; under Advanced: smoothing, how long a lost target stays marked, joining pieces into one target, speck filter |
 | Hotkeys | Global hotkeys that work while the game has focus (defaults: Ctrl+Alt+A start/stop, Ctrl+Alt+P next profile, Ctrl+Alt+O outline on/off, Ctrl+Alt+S save screenshot for labelling) |
 | Settings | Dark, light or high-contrast (black and yellow) theme; text size; start on launch; keep running in the system tray |
 | Help | Illustrated explanations of every page, tuning colours, overlay vs. mirror, troubleshooting |

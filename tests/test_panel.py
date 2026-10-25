@@ -48,6 +48,14 @@ def test_no_removed_features_and_pages(panel):
     assert panel.stack.count() == len(PAGES)
 
 
+def test_advanced_sections_open_together_and_are_remembered(panel):
+    assert panel._advanced_boxes and not any(b.isOpen() for b in panel._advanced_boxes)
+    panel.set_advanced(True)
+    assert all(b.isOpen() for b in panel._advanced_boxes) and panel.cfg.display.show_advanced
+    panel.set_advanced(False)
+    assert not any(b.isOpen() for b in panel._advanced_boxes) and not panel.cfg.display.show_advanced
+
+
 def test_help_sections_and_images(panel):
     here = os.path.join(os.path.dirname(__file__), "..", "colorassist", "assets", "help")
     for key, title, image, html in HELP:

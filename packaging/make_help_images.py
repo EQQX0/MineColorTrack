@@ -118,6 +118,7 @@ def main():
     cfg.capture.window_title, cfg.capture.window_exe = "Minecraft", "Minecraft.Windows.exe"
 
     panel = Panel(cfg, r"C:\Users\you\AppData\Roaming\MineColorTrack\config.json")
+    panel.set_advanced(True)
     panel.resize(1100, 760)
     panel.show()
     settle(app)

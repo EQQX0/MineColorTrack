@@ -15,9 +15,9 @@ from PyQt6.QtWidgets import (QApplication, QColorDialog, QComboBox, QFileDialog,
 from . import APP_NAME, COPYRIGHT, LICENSE_NAME, SOURCE_URL, __version__, dataset, detector, engine, winplat
 from .config import CHOICES, Entity, Profile, Target
 from .help_text import HELP, NAV_TIPS, TIPS
-from .ui import ColourButton, HotkeyEdit, SliderField, ToggleSwitch, card, clear_layout, label, swatch
+from .ui import Advanced, ColourButton, HotkeyEdit, SliderField, ToggleSwitch, card, clear_layout, label, swatch
 
-PAGES = ["Home", "Watch", "Targets", "Entities", "Outline", "Tracking", "Hotkeys", "Settings", "Help"]
+PAGES = ["Home", "Watch", "Targets", "Entities", "Outline", "Hotkeys", "Settings", "Help"]
 HELP_IMAGES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "help")
 
 
@@ -52,6 +52,7 @@ class Panel(QMainWindow):
         self._target_widgets = []
         self._colour_buttons = []
         self._help_sections = {}
+        self._advanced_boxes = []      # every "+ Advanced" disclosure; they open and close together
         self.anchors = {}              # widgets the help pictures point at, per page
         self.setWindowTitle(APP_NAME)
         self.setMinimumSize(900, 620)
@@ -89,8 +90,7 @@ class Panel(QMainWindow):
         self.stack = QStackedWidget()
         self._model_names = {}         # model path -> class names (read once)
         for build in (self._page_home, self._page_watch, self._page_targets, self._page_entities,
-                      self._page_outline,
-                      self._page_tracking, self._page_hotkeys, self._page_settings, self._page_help):
+                      self._page_outline, self._page_hotkeys, self._page_settings, self._page_help):
             self.stack.addWidget(self._scroll(build()))
         root.addWidget(self.stack, 1)
         self.setCentralWidget(central)
@@ -103,10 +103,12 @@ class Panel(QMainWindow):
     @staticmethod
     def _scroll(content):
         content.setObjectName("page")
+        content.setMaximumWidth(1000)
         s = QScrollArea()
         s.setWidgetResizable(True)
         s.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         s.setWidget(content)
+        s.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
         return s
 
     def _page(self, title, subtitle, help_key=None):
@@ -135,6 +137,29 @@ class Panel(QMainWindow):
         f.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         lay.addLayout(f)
         return f
+
+    def _advanced_block(self, parent):
+        """Add a '+ Advanced' disclosure to the end of layout `parent`; returns the layout inside it."""
+        box = Advanced()
+        box.setOpen(self.cfg.display.show_advanced)
+        box.button.setToolTip(tip("advanced"))
+        box.toggled.connect(self.set_advanced)
+        self._advanced_boxes.append(box)
+        parent.addWidget(box)
+        return box.body_layout
+
+    def _advanced(self, cl):
+        """Like _advanced_block, but returns a form for the rows."""
+        return self._form(self._advanced_block(cl))
+
+    def set_advanced(self, on):
+        """Show or hide every Advanced section at once and remember the choice."""
+        on = bool(on)
+        for box in self._advanced_boxes:
+            box.setOpen(on)
+        if self.cfg.display.show_advanced != on:
+            self.cfg.display.show_advanced = on
+            self.settingsChanged.emit()
 
     @staticmethod
     def _row(form, key, field):
@@ -344,7 +369,7 @@ class Panel(QMainWindow):
         r.addWidget(self.home_ai)
         self.home_ai_text = label("", "muted")
         r.addWidget(self.home_ai_text, 1)
-        r.addWidget(self._button("Options", "outline_options", lambda: self.go("Entities")))
+        r.addWidget(self._button("Options", "ai_options", lambda: self.go("Entities")))
         cl.addLayout(r)
         v.addWidget(c)
 
@@ -391,10 +416,7 @@ class Panel(QMainWindow):
         wrow.addWidget(self.window_box, 1)
         wrow.addWidget(self._button("Refresh", "refresh", self.refresh_sources))
         self._row(f, "window_list", wrow)
-        self.title_edit = self._bind("text", cap, "window_title", R, "capture.window_title", after=self._watch_edited)
-        self._row(f, "capture.window_title", self.title_edit)
-        self.exe_edit = self._bind("text", cap, "window_exe", R, "capture.window_exe", after=self._watch_edited)
-        self._row(f, "capture.window_exe", self.exe_edit)
+        self._watch_form, self._watch_window_row = f, wrow
 
         self.monitor_box = QComboBox()
         self.monitor_box.currentIndexChanged.connect(self._monitor_chosen)
@@ -405,6 +427,12 @@ class Panel(QMainWindow):
         self.region_btn = self._button("Select region on screen...", "select_region", self.pickRegionRequested.emit)
         rrow.addWidget(self.region_btn)
         self._row(f, "region", rrow)
+        self._watch_region_row = rrow
+        af = self._advanced(cl)
+        self.title_edit = self._bind("text", cap, "window_title", R, "capture.window_title", after=self._watch_edited)
+        self._row(af, "capture.window_title", self.title_edit)
+        self.exe_edit = self._bind("text", cap, "window_exe", R, "capture.window_exe", after=self._watch_edited)
+        self._row(af, "capture.window_exe", self.exe_edit)
         v.addWidget(c)
         self.refresh_sources()
 
@@ -413,10 +441,11 @@ class Panel(QMainWindow):
         f = self._form(cl)
         self.fps_slider = self._bind("slider", cap, "fps", R, "capture.fps", lo=5, hi=120)
         self._row(f, "capture.fps", self.fps_slider)
-        self._row(f, "capture.scale", self._bind("slider", cap, "scale", R, "capture.scale", lo=20, hi=100,
-                                                 step=5, suffix=" %"))
-        self._row(f, "capture.method", self._bind("choice", cap, "method", R, "capture.method",
-                                                  choices_key=("CaptureCfg", "method")))
+        af = self._advanced(cl)
+        self._row(af, "capture.scale", self._bind("slider", cap, "scale", R, "capture.scale", lo=20, hi=100,
+                                                  step=5, suffix=" %"))
+        self._row(af, "capture.method", self._bind("choice", cap, "method", R, "capture.method",
+                                                   choices_key=("CaptureCfg", "method")))
         v.addWidget(c)
 
         c, cl = card("Centre zone")
@@ -427,13 +456,14 @@ class Panel(QMainWindow):
         self._row(f, "capture.focus_size", self._bind("slider", cap, "focus_size", R, "capture.focus_size",
                                                       lo=5, hi=100, step=5, suffix=" %"))
         f.addRow("", self._bind("switch", cap, "focus_show", R, "capture.focus_show"))
-        self._row(f, "capture.focus_color", self._bind("colour", cap, "focus_color", R, "capture.focus_color"))
-        self._row(f, "capture.focus_line_alpha", self._bind("slider", cap, "focus_line_alpha", R,
-                                                            "capture.focus_line_alpha", lo=0, hi=100, step=5,
-                                                            suffix=" %"))
-        self._row(f, "capture.focus_fill_alpha", self._bind("slider", cap, "focus_fill_alpha", R,
-                                                            "capture.focus_fill_alpha", lo=0, hi=100, step=1,
-                                                            suffix=" %"))
+        af = self._advanced(cl)
+        self._row(af, "capture.focus_color", self._bind("colour", cap, "focus_color", R, "capture.focus_color"))
+        self._row(af, "capture.focus_line_alpha", self._bind("slider", cap, "focus_line_alpha", R,
+                                                             "capture.focus_line_alpha", lo=0, hi=100, step=5,
+                                                             suffix=" %"))
+        self._row(af, "capture.focus_fill_alpha", self._bind("slider", cap, "focus_fill_alpha", R,
+                                                             "capture.focus_fill_alpha", lo=0, hi=100, step=1,
+                                                             suffix=" %"))
         v.addWidget(c)
         v.addStretch(1)
         self.anchors["watch"] = [self.source_box, self.window_box, self.monitor_box, self.region_btn, self.perf_card,
@@ -511,6 +541,10 @@ class Panel(QMainWindow):
         for wdg in (self.title_edit, self.exe_edit):
             wdg.setEnabled(src == "window")
         self.region_btn.setEnabled(src == "region")
+        f = self._watch_form
+        f.setRowVisible(self._watch_window_row, src == "window")
+        f.setRowVisible(self.monitor_box, src == "monitor")
+        f.setRowVisible(self._watch_region_row, src == "region")
         self.show_region()
         self.watch_summary.setText(self.watch_text())
 
@@ -555,18 +589,21 @@ class Panel(QMainWindow):
         self.colour_btn = self._bind("colour", tg, "color", T, "target.color", after=self._targets_edited)
         self._row(f, "target.color", self.colour_btn)
         ranges = []
+        af = None
         for attr, lo, hi, suffix in (("hue_tol", 1, 90, " °"), ("sat_min", 0, 100, " %"),
                                      ("sat_max", 0, 100, " %"), ("val_min", 0, 100, " %"),
                                      ("val_max", 0, 100, " %")):
             wdg = self._bind("slider", tg, attr, T, "target." + attr, lo=lo, hi=hi, suffix=suffix)
-            self._row(f, "target." + attr, wdg)
+            if attr == "sat_min":
+                self._row(f, "target.outline_color", self._bind("colour", tg, "outline_color", T,
+                                                                "target.outline_color", after=self._targets_edited))
+                af = self._advanced(cl)
+            self._row(f if af is None else af, "target." + attr, wdg)
             ranges.append(wdg)
         self.size_box = self._bind("int", tg, "min_area", T, "target.min_area", lo=1, hi=200000, suffix=" px")
-        self._row(f, "target.min_area", self.size_box)
-        self._row(f, "target.max_area", self._bind("int", tg, "max_area", T, "target.max_area", lo=0, hi=2000000,
-                                                   suffix=" px"))
-        self._row(f, "target.outline_color", self._bind("colour", tg, "outline_color", T, "target.outline_color",
-                                                        after=self._targets_edited))
+        self._row(af, "target.min_area", self.size_box)
+        self._row(af, "target.max_area", self._bind("int", tg, "max_area", T, "target.max_area", lo=0, hi=2000000,
+                                                    suffix=" px"))
         row.addWidget(c, 2)
         v.addLayout(row)
 
@@ -606,12 +643,13 @@ class Panel(QMainWindow):
         self.confidence_slider = self._bind("slider", d, "confidence", R, "detection.confidence", lo=5, hi=95,
                                             suffix=" %")
         self._row(f, "detection.confidence", self.confidence_slider)
+        af = self._advanced(cl)
         self.device_combo = self._bind("choice", lambda: self.cfg.ai, "device", R, "ai.device",
                                        choices_key=("AICfg", "device"), after=self._ai_edited)
-        self._row(f, "ai.device", self.device_combo)
+        self._row(af, "ai.device", self.device_combo)
         self.fp16_switch = self._bind("switch", lambda: self.cfg.ai, "tensorrt_fp16", R, "ai.tensorrt_fp16",
                                       after=self._ai_edited)
-        f.addRow("", self.fp16_switch)
+        af.addRow("", self.fp16_switch)
         v.addWidget(c)
 
         c, cl = card("Entities in this model")
@@ -634,7 +672,7 @@ class Panel(QMainWindow):
         self.dataset_label = label("", wrap=True)
         drow.addWidget(self.dataset_label, 1)
         drow.addWidget(self._button("Change...", "change_dataset", self.change_dataset))
-        f = self._form(cl)
+        f = self._advanced(cl)
         self._row(f, "dataset_dir", drow)
         v.addWidget(c)
         v.addStretch(1)
@@ -782,8 +820,9 @@ class Panel(QMainWindow):
 
     def _page_outline(self):
         o = lambda: self.cfg.profile.outline
+        t = lambda: self.cfg.profile.tracking
         R = self._refreshers
-        w, v = self._page("Outline", "How the outlines around targets look.", "outline")
+        w, v = self._page("Outline", "How the outlines around targets look and how steady they are.", "outline")
         c, cl = card()
         f = self._form(cl)
         f.addRow("", self._bind("switch", o, "enabled", R, "outline.enabled"))
@@ -793,48 +832,46 @@ class Panel(QMainWindow):
                                                      suffix=" px"))
         self._row(f, "outline.padding", self._bind("slider", o, "padding", R, "outline.padding", lo=0, hi=60,
                                                    suffix=" px"))
-        self._row(f, "outline.marker", self._bind("choice", o, "marker", R, "outline.marker",
-                                                  choices_key=("OutlineCfg", "marker")))
-        f.addRow("", self._bind("switch", o, "black_border", R, "outline.black_border"))
-        f.addRow("", self._bind("switch", o, "use_target_color", R, "outline.use_target_color"))
-        self._row(f, "outline.color", self._bind("colour", o, "color", R, "outline.color"))
+        f.addRow("", self._bind("switch", o, "use_target_color", R, "outline.use_target_color",
+                                after=self._update_outline_rows))
+        self.outline_colour_btn = self._bind("colour", o, "color", R, "outline.color")
+        self._outline_form = f
+        self._row(f, "outline.color", self.outline_colour_btn)
         f.addRow("", self._bind("switch", o, "labels", R, "outline.labels"))
-        f.addRow("", self._bind("switch", o, "blink", R, "outline.blink"))
-        f.addRow("", self._bind("switch", o, "show_held", R, "outline.show_held"))
+        self._row(f, "tracking.smoothing", self._bind("slider", t, "smoothing", R, "tracking.smoothing", lo=0, hi=95,
+                                                      suffix=" %"))
+        af = self._advanced(cl)
+        self._row(af, "outline.marker", self._bind("choice", o, "marker", R, "outline.marker",
+                                                   choices_key=("OutlineCfg", "marker")))
+        af.addRow("", self._bind("switch", o, "black_border", R, "outline.black_border"))
+        af.addRow("", self._bind("switch", o, "blink", R, "outline.blink"))
+        af.addRow("", self._bind("switch", o, "show_held", R, "outline.show_held"))
+        self._row(af, "tracking.hold_frames", self._bind("slider", t, "hold_frames", R, "tracking.hold_frames",
+                                                         lo=0, hi=90, suffix=" fr"))
+        self._row(af, "tracking.merge_distance", self._bind("slider", t, "merge_distance", R,
+                                                            "tracking.merge_distance", lo=0, hi=80, suffix=" px"))
+        self._row(af, "tracking.noise_filter", self._bind("slider", t, "noise_filter", R, "tracking.noise_filter",
+                                                          lo=0, hi=6))
+        R.append(self._update_outline_rows)
         v.addWidget(c)
         v.addStretch(1)
         return w
 
-    def _page_tracking(self):
-        t = lambda: self.cfg.profile.tracking
-        R = self._refreshers
-        w, v = self._page("Tracking", "How detections become steady outlines.", "profiles")
-        c, cl = card()
-        f = self._form(cl)
-        self._row(f, "tracking.smoothing", self._bind("slider", t, "smoothing", R, "tracking.smoothing", lo=0, hi=95,
-                                                      suffix=" %"))
-        self._row(f, "tracking.hold_frames", self._bind("slider", t, "hold_frames", R, "tracking.hold_frames",
-                                                        lo=0, hi=90, suffix=" fr"))
-        self._row(f, "tracking.merge_distance", self._bind("slider", t, "merge_distance", R,
-                                                           "tracking.merge_distance", lo=0, hi=80, suffix=" px"))
-        self._row(f, "tracking.noise_filter", self._bind("slider", t, "noise_filter", R, "tracking.noise_filter",
-                                                         lo=0, hi=6))
-        v.addWidget(c)
-        v.addStretch(1)
-        return w
+    def _update_outline_rows(self):
+        """The single outline colour only matters when targets do not bring their own."""
+        self._outline_form.setRowVisible(self.outline_colour_btn, not self.cfg.profile.outline.use_target_color)
 
     def _page_hotkeys(self):
         k = lambda: self.cfg.hotkeys
         R = self._refreshers
         w, v = self._page("Hotkeys", "Work anywhere, also while the game window is active. "
-                                     "Switch on Ctrl, Alt and Shift if you want them, then click the key box and press any key. "
-                                     "Clear turns a hotkey off.", "profiles")
+                                     "Switch on Ctrl, Alt or Shift if you want them, then click the key box and press any key. "
+                                     "Changes apply at once; Clear turns a hotkey off.", "profiles")
         c, cl = card()
         f = self._form(cl)
         for attr in ("toggle_overlay", "next_profile", "toggle_outline", "save_screenshot"):
             self._row(f, "hotkeys." + attr, self._bind("hotkey", k, attr, R, "hotkeys." + attr,
                                                  after=self.hotkeysApply.emit))
-        f.addRow("", self._button("Apply hotkeys", "hotkeys_apply", self.hotkeysApply.emit, "primary"))
         self.hotkey_status = label("", "muted")
         f.addRow(self.hotkey_status)
         v.addWidget(c)
@@ -856,8 +893,9 @@ class Panel(QMainWindow):
         f = self._form(cl)
         f.addRow("", self._bind("switch", d, "start_on_launch", R, "display.start_on_launch"))
         f.addRow("", self._bind("switch", d, "close_to_tray", R, "display.close_to_tray"))
-        f.addRow("", self._bind("switch", d, "mirror_on_top", R, "display.mirror_on_top",
-                                after=self.displayModeChanged.emit))
+        af = self._advanced(cl)
+        af.addRow("", self._bind("switch", d, "mirror_on_top", R, "display.mirror_on_top",
+                                 after=self.displayModeChanged.emit))
         v.addWidget(c)
         c, cl = card("Updates")
         f = self._form(cl)
@@ -869,6 +907,7 @@ class Panel(QMainWindow):
         f.addRow("", ur)
         v.addWidget(c)
 
+        adv = self._advanced_block(v)
         c, cl = card("Command line (for scripts and AI agents)",
                      "The mct tool controls everything on these pages: settings, profiles, targets, the AI model, "
                      "what to watch, start and stop. Changes apply live while MineColorTrack is open.")
@@ -879,7 +918,7 @@ class Panel(QMainWindow):
                                     "primary"))
         crow.addStretch(1)
         cl.addLayout(crow)
-        v.addWidget(c)
+        adv.addWidget(c)
 
         c, cl = card("About")
         cl.addWidget(label("%s %s" % (APP_NAME, __version__), "h2"))
@@ -894,7 +933,6 @@ class Panel(QMainWindow):
         lrow.addWidget(self._button("Source code", "show_source", lambda: QDesktopServices.openUrl(QUrl(SOURCE_URL))))
         lrow.addStretch(1)
         cl.addLayout(lrow)
-        cl.addWidget(label("Settings are saved automatically to:\n%s" % self.config_path, "muted"))
         cl.addWidget(self._button("Open settings folder", "open_folder", lambda: QDesktopServices.openUrl(
             QUrl.fromLocalFile(os.path.dirname(self.config_path) or "."))), 0, Qt.AlignmentFlag.AlignLeft)
         v.addWidget(c)

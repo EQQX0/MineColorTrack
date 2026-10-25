@@ -94,6 +94,7 @@ class DisplayCfg:
     theme: str = "dark"
     start_on_launch: bool = False
     close_to_tray: bool = False
+    show_advanced: bool = False
 
 
 @dataclass

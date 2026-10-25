@@ -11,11 +11,13 @@ TIPS = {
                            "Use different profiles for different games, biomes or times of day."),
     "manage_profiles": ("", "Make a new empty profile, or duplicate, rename or delete the current one."),
     "outline_switch": ("Show outlines", "Show or hide the outlines for this profile."),
+    "advanced": ("", "Show or hide extra options most people never need. This applies to every page."),
+    "ai_options": ("", "Open the Entities page with all AI model settings."),
     "outline_options": ("", "Open the Outline page with all outline settings."),
     "home_target": ("", "Turn this target on or off. Targets that are off are not searched for."),
     "edit_targets": ("", "Open the Targets page to add targets and pick their colours from the game."),
     "change_watch": ("", "Open the Watch page to choose which window, monitor or screen area to watch."),
-    "display.mode": ("Show outlines", "Overlay: draws directly on top of the watched window or monitor. "
+    "display.mode": ("Draw on", "Overlay: draws directly on top of the watched window or monitor. "
                                       "Clicks pass straight through it.\n"
                                       "Mirror window: shows a copy of the watched picture with outlines in its own "
                                       "window, for example on a second monitor."),
@@ -101,15 +103,15 @@ TIPS = {
     "outline.padding": ("Space around target", "Gap between the target and its outline,\n"
                                                "so the outline does not cover the target."),
     "outline.marker": ("Marker above target", "An arrow or dot above each outline, easier to spot from a distance."),
-    "outline.black_border": ("Black backing line (visible on any background)", "Draws a black line behind the outline so it stays visible on light and dark "
+    "outline.black_border": ("Black backing line", "Draws a black line behind the outline so it stays visible on light and dark "
                                  "backgrounds."),
-    "outline.use_target_color": ("Use each target's own outline colour", "On: each target uses its own outline colour from the Targets page.\n"
+    "outline.use_target_color": ("Use each target's own colour", "On: each target uses its own outline colour from the Targets page.\n"
                                      "Off: all outlines use the single colour below."),
     "outline.color": ("Single colour", "Outline colour for all targets when “Use each target's own outline "
                                        "colour” is off."),
     "outline.labels": ("Show target names", "Write the target's name above its outline."),
     "outline.blink": ("Blink", "Make outlines flash about three times a second to draw attention."),
-    "outline.show_held": ("Dashed outline for a moment after a target is lost", "If a target disappears for a moment (behind a block, or a dropped frame),\n"
+    "outline.show_held": ("Show lost targets briefly", "If a target disappears for a moment (behind a block, or a dropped frame),\n"
                               "keep a dashed outline where it was for a short time."),
     # Tracking
     "tracking.smoothing": ("Smoothing", "Averages outline positions over time.\nHigher = steadier outlines that "
@@ -126,8 +128,6 @@ TIPS = {
                                                "Works while the game has focus."),
     "hotkeys.next_profile": ("Next profile", "Switches to the next profile in the list."),
     "hotkeys.toggle_outline": ("Outline on/off", "Shows or hides outlines without stopping."),
-    "hotkeys_apply": ("", "Activate the hotkeys typed above. The line below lists any that could not be used,\n"
-                          "for example because another program already uses them."),
     # Entities (AI)
     "detection.enabled": ("Find entities with an AI model", "Outline entities your own AI model recognises, such "
                                                             "as pigs, villagers or players.\nWorks together with "
@@ -223,8 +223,7 @@ NAV_TIPS = {
     "Watch": "Choose which window, monitor or screen area to watch.",
     "Targets": "The colours to look for, and the colour picker.",
     "Entities": "Find things by their shape with your own AI model, and the labelling tool to make one.",
-    "Outline": "How the outlines look.",
-    "Tracking": "How steady the outlines are and how pieces are joined.",
+    "Outline": "How the outlines look and how steady they are.",
     "Hotkeys": "Keyboard shortcuts that work while you play.",
     "Settings": "Theme, text size and start-up behaviour.",
     "Help": "Explanations of every part of MineColorTrack, with pictures.",
@@ -369,8 +368,8 @@ rename or delete it. The profile in use is remembered.</li>
 <li><b>Hotkeys</b> work anywhere, also while the game is active: Start / stop, Next profile, Outline on/off,
 Save screenshot for labelling.
 Switch on Ctrl, Alt or Shift, click the key box and press any key. It applies at once.</li>
-<li><b>Tracking</b>: Smoothing makes outlines steadier; Join pieces makes one outline per mob; Speck filter
-removes single-pixel noise.</li>
+<li><b>Outline, under Advanced</b>: Smoothing makes outlines steadier; Join pieces makes one outline per mob;
+Speck filter removes single-pixel noise.</li>
 <li><b>Settings</b>: dark, light or high-contrast theme, text size, start automatically, keep running in the
 system tray. Everything is saved automatically.</li>
 </ul>

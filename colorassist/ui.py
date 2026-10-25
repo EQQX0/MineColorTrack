@@ -74,6 +74,9 @@ QPushButton#primary:hover {{ background: {accent}; border-color: {text}; }}
 QPushButton#danger {{ background: {danger}; color: {danger_text}; border: 2px solid {danger}; font-weight: 700; }}
 QPushButton#danger:hover {{ background: {danger}; border-color: {text}; }}
 QPushButton#primary:focus, QPushButton#danger:focus {{ border: 2px solid {text}; }}
+QPushButton#adv {{ background: transparent; border: none; color: {muted}; font-weight: 700; padding: 4px 6px; min-height: 20px; border-radius: 12px; }}
+QPushButton#adv:hover {{ color: {text}; background: {surface2}; }}
+QPushButton#adv:focus {{ border: 2px solid {accent}; }}
 QPushButton#mod:checked {{ background: {accent}; color: {accent_text}; border-color: {accent}; font-weight: 700; }}
 QPushButton#big {{ font-size: {h2}pt; padding: 16px 38px; border-radius: 30px; min-height: 28px; }}
 QToolButton::menu-indicator {{ image: none; }}
@@ -420,6 +423,37 @@ class HotkeyEdit(QWidget):
     def _cleared(self):
         self.setValue("")
         self.hotkeyChanged.emit("")
+
+
+class Advanced(QWidget):
+    """A quiet '+ Advanced' toggle that reveals the extra options below it."""
+    toggled = pyqtSignal(bool)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        v = QVBoxLayout(self)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(10)
+        self._open = False
+        self.button = QPushButton()
+        self.button.setObjectName("adv")
+        self.button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.button.clicked.connect(lambda: self.toggled.emit(not self._open))
+        v.addWidget(self.button, 0, Qt.AlignmentFlag.AlignLeft)
+        self.body = QWidget()
+        self.body_layout = QVBoxLayout(self.body)
+        self.body_layout.setContentsMargins(0, 0, 0, 0)
+        self.body_layout.setSpacing(12)
+        v.addWidget(self.body)
+        self.setOpen(False)
+
+    def isOpen(self):
+        return self._open
+
+    def setOpen(self, on):
+        self._open = bool(on)
+        self.body.setVisible(self._open)
+        self.button.setText(("−  Advanced" if self._open else "+  Advanced"))
 
 
 class ColourButton(QPushButton):
