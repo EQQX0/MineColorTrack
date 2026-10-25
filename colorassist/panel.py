@@ -284,6 +284,7 @@ class Panel(QMainWindow):
         st.addWidget(self.status)
         self.timings_label = label("", "muted")
         self.timings_label.setToolTip(tip("timings"))
+        self.timings_label.hide()
         self._timings_at = 0.0
         st.addWidget(self.timings_label)
         row.addLayout(st, 1)
@@ -1197,6 +1198,7 @@ class Panel(QMainWindow):
         if not running:
             self.status.setText("Press Start, then click back into your game.")
             self.timings_label.setText("")
+            self.timings_label.hide()
             self._refresh_ai(None, None, None, None)
         self._emit_preview()
 
@@ -1237,6 +1239,7 @@ class Panel(QMainWindow):
         self._timings_at = now
         parts = ["%s %.1f" % (k, ms[k]) for k in engine.STAGES if k in ms]
         self.timings_label.setText("Time per frame (ms): " + " · ".join(parts) if parts else "")
+        self.timings_label.setVisible(bool(parts))
 
     def closeEvent(self, e):
         if self.cfg.display.close_to_tray:

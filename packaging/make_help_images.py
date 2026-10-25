@@ -236,7 +236,7 @@ def main():
                     config.Entity("player", True, "#FF3DFF")]
     cfg.ai.dataset_dir = r"C:\Users\you\Documents\MineColorTrack dataset"
     panel.refresh_all()
-    panel._refresh_ai("GPU")
+    panel._refresh_ai("DirectML (graphics card)", None, None, None)
     panel.go("Entities")
     panel.resize(1100, 1000)
     settle(app)
