@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 import dataclasses
 import json
 import os

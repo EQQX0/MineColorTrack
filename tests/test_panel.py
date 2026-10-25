@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Builds the real control panel off-screen and checks every control explains itself."""
 import os
 import sys
@@ -87,3 +89,13 @@ def test_fps_goes_to_120(panel):
     panel.fps_slider.setValue(120)
     panel.fps_slider._from_spin(120)
     assert panel.cfg.capture.fps == 120
+
+
+def test_licence_shown_and_files_present(panel):
+    import hashlib
+    root = os.path.join(os.path.dirname(__file__), "..")
+    with open(os.path.join(root, "LICENSE"), "rb") as fh:
+        assert hashlib.sha256(fh.read()).hexdigest() == \
+            "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"   # official GPL-3.0 text
+    assert os.path.exists(os.path.join(root, "THIRD_PARTY_NOTICES.md"))
+    assert "GPL v3" in panel.licence_label.text() and "EQQX2" in panel.licence_label.text()

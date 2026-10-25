@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Checks GitHub for a newer release and downloads its installer.
 
 Uses the public GitHub API (no account needed), so the repository must be public.

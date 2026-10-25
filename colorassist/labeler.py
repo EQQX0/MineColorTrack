@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Labelling tool: collect screenshots, draw boxes around entities, and export a zip for training in Colab."""
 import os
 import shutil

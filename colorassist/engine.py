@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Background worker: capture -> colour and AI detection -> tracking, handed to the GUI as a Result."""
 import threading
 import time

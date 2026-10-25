@@ -1,4 +1,5 @@
 ; Inno Setup script: wraps the PyInstaller output into one MineColorTrack-Setup-<version>.exe
+; Copyright (C) 2026 EQQX2. SPDX-License-Identifier: GPL-3.0-or-later
 ; Build: ISCC.exe /DMyAppVersion=1.0.0 packaging\MineColorTrack.iss   (after PyInstaller)
 
 #ifndef MyAppVersion
@@ -13,6 +14,8 @@ AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher=EQQX0
+AppCopyright=Copyright (C) 2026 EQQX2, GNU GPL v3 or later
+AppPublisherURL=https://github.com/EQQX0/MineColorTrack
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
@@ -43,6 +46,8 @@ Name: "addtopath"; Description: "Add the mct command-line tool to PATH (for scri
 
 [Files]
 Source: "..\dist\MineColorTrack\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion
+Source: "..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [InstallDelete]
 ; 1.0.x put a single shortcut directly in the Start menu; it now lives in a MineColorTrack folder.

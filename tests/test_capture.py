@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Capture back-end selection and fallback (no screen needed)."""
 import os
 import sys

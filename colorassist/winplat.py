@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Windows-only helpers via ctypes. Every function is a safe no-op elsewhere.
 
 All rectangles here are physical screen pixels (x, y, w, h), the same space mss captures in.

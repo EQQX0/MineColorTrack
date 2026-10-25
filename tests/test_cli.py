@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """The `mct` command-line tool: file mode, validation, and live control of a running app."""
 import io
 import json

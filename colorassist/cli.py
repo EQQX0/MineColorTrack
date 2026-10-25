@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """`mct`: command-line control of MineColorTrack for people and AI agents.
 
 Every command prints JSON. If MineColorTrack is running, changes apply to it live; otherwise the settings file
@@ -11,7 +13,7 @@ import subprocess
 import sys
 from dataclasses import asdict, fields, is_dataclass
 
-from . import APP_NAME, __version__, config, ipc
+from . import APP_NAME, COPYRIGHT, LICENSE_NAME, SOURCE_URL, __version__, config, ipc
 
 GLOBAL_SECTIONS = ("capture", "display", "hotkeys", "ai")
 PROFILE_SECTIONS = ("outline", "tracking", "detection")
@@ -544,7 +546,8 @@ def build_parser():
     ap.add_argument("--config", default=config.default_path(), help="settings file (default: %(default)s)")
     ap.add_argument("--offline", action="store_true", help="edit the settings file even if the app is running "
                     "(the app may overwrite it)")
-    ap.add_argument("--version", action="version", version="%s %s" % (APP_NAME, __version__))
+    ap.add_argument("--version", action="version", version="%s %s - %s, %s. No warranty. Source: %s" % (
+        APP_NAME, __version__, COPYRIGHT, LICENSE_NAME, SOURCE_URL))
     sub = ap.add_subparsers(dest="command", required=True, metavar="COMMAND")
 
     sub.add_parser("guide", help="how to use this tool")

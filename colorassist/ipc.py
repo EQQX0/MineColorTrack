@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Private local connection between the `mct` command-line tool and a running MineColorTrack.
 
 Windows uses a named pipe, other systems a Unix socket. Every connection must prove it knows a random key stored

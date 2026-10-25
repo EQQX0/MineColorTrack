@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Screen capture back-ends.
 
 - "fast": Windows Desktop Duplication (DXGI) through the dxcam library. Reads the GPU's finished desktop image,

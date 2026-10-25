@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Wires the control panel, capture engine and assist window together."""
 import argparse
 from dataclasses import asdict

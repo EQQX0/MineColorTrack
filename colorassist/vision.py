@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Colour detection and box tracking.
 
 Everything here is plain numpy/OpenCV so it can be tested without a screen.

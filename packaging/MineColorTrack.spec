@@ -16,7 +16,8 @@ for pkg in ("dxcam", "comtypes"):          # Windows fast capture; imported lazi
 common = dict(
     pathex=[root],
     hiddenimports=hidden + ["colorassist.cli"],
-    datas=[(os.path.join(root, "colorassist", "assets"), os.path.join("colorassist", "assets"))],
+    datas=[(os.path.join(root, "colorassist", "assets"), os.path.join("colorassist", "assets")),
+           (os.path.join(root, "LICENSE"), "."), (os.path.join(root, "THIRD_PARTY_NOTICES.md"), ".")],
     excludes=["tkinter", "PIL", "pytest", "matplotlib", "IPython", "onnx", "torch", "torchvision", "ultralytics",
               "scipy", "pandas", "polars", "sympy"],
     noarchive=False,

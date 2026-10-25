@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Renders the pictures for the in-app Help page into colorassist/assets/help/.
 
 Run from the repository root after UI changes:  python packaging/make_help_images.py

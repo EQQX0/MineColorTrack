@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Writes colorassist/assets/train_minecolortrack.ipynb (the Google Colab training notebook).
 
 Lines ending in "# colab-only" are skipped by tests/test_training_e2e.py, which runs the rest locally.

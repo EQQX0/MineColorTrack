@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Runs a YOLO object-detection model (.onnx, e.g. trained with the Colab notebook) on captured frames.
 
 Supports Ultralytics exports in both output layouts:

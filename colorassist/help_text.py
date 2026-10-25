@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """All user-facing explanations: tooltips for every control, and the Help page sections."""
 
 # key -> (text, tooltip). The text is the row label, or the switch's own text; "" for buttons.
@@ -182,6 +184,10 @@ TIPS = {
                        "again;\nyour settings and profiles are kept."),
     "update_notes": ("", "Open the release page with the list of changes."),
     "update_skip": ("", "Do not mention this version again. You can still update from Settings."),
+    "show_licence": ("", "Read the GNU General Public License, version 3, that MineColorTrack is released under."),
+    "show_notices": ("", "Licences of the software MineColorTrack is built with (Qt, OpenCV, ONNX Runtime and "
+                         "others)."),
+    "show_source": ("", "Open MineColorTrack's source code on GitHub."),
     "open_folder": ("", "Open the folder that holds your settings file and the error log."),
     "help_button": ("", "Explain this page, with pictures."),
 }

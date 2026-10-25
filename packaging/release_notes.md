@@ -22,6 +22,12 @@ Requirements: Windows 10 (version 2004 or newer) or Windows 11, 64-bit. Nothing 
 
 Every setting has a tooltip, and the **Help** page explains everything with pictures.
 
+## What's new in 1.6.3
+
+- MineColorTrack is now free software under the **GNU GPL v3 or later** (Copyright (C) 2026 EQQX2).
+  The licence and a list of the bundled third-party software are installed with the app and shown under
+  Settings > About.
+
 ## What's new in 1.6.2
 
 - Removed "Add Minecraft armour targets" (added in 1.6.1). Armour targets you already added stay in your

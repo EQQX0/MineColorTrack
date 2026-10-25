@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """AI detection, dataset handling and the labelling tool (no trained model needed)."""
 import os
 import sys

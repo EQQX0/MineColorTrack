@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Builds tiny ONNX files shaped like Ultralytics YOLO exports, for testing without a trained model.
 
     python tests/fake_model.py out.onnx [--end2end]

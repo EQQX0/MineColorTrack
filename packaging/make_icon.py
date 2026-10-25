@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Draws the app icon (colorassist/assets/icon.png and icon.ico). Run once; the outputs are committed."""
 import os
 

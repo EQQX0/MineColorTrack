@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Control panel: sidebar navigation, a Home page with the essentials, a page per feature, and Help."""
 import copy
 import os
@@ -9,7 +11,7 @@ from PyQt6.QtWidgets import (QApplication, QColorDialog, QComboBox, QFileDialog,
                              QListWidget, QMainWindow, QMenu, QMessageBox, QPushButton, QScrollArea, QSpinBox,
                              QStackedWidget, QToolButton, QVBoxLayout, QWidget)
 
-from . import APP_NAME, __version__, dataset, detector, engine, winplat
+from . import APP_NAME, COPYRIGHT, LICENSE_NAME, SOURCE_URL, __version__, dataset, detector, engine, winplat
 from .config import CHOICES, Entity, Profile, Target
 from .help_text import HELP, NAV_TIPS, TIPS
 from .ui import ColourButton, SliderField, ToggleSwitch, card, clear_layout, label, swatch
@@ -831,6 +833,17 @@ class Panel(QMainWindow):
 
         c, cl = card("About")
         cl.addWidget(label("%s %s" % (APP_NAME, __version__), "h2"))
+        self.licence_label = label("%s. Free software under the %s: you may use, share and change it under the "
+                                   "licence's terms. It comes with ABSOLUTELY NO WARRANTY." % (COPYRIGHT, LICENSE_NAME),
+                                   "muted")
+        cl.addWidget(self.licence_label)
+        lrow = QHBoxLayout()
+        lrow.addWidget(self._button("Licence", "show_licence", lambda: self._open_bundled("LICENSE")))
+        lrow.addWidget(self._button("Third-party software", "show_notices",
+                                    lambda: self._open_bundled("THIRD_PARTY_NOTICES.md")))
+        lrow.addWidget(self._button("Source code", "show_source", lambda: QDesktopServices.openUrl(QUrl(SOURCE_URL))))
+        lrow.addStretch(1)
+        cl.addLayout(lrow)
         cl.addWidget(label("Settings are saved automatically to:\n%s" % self.config_path, "muted"))
         cl.addWidget(self._button("Open settings folder", "open_folder", lambda: QDesktopServices.openUrl(
             QUrl.fromLocalFile(os.path.dirname(self.config_path) or "."))), 0, Qt.AlignmentFlag.AlignLeft)
@@ -860,6 +873,16 @@ class Panel(QMainWindow):
             self._help_sections[key] = c
         v.addStretch(1)
         return w
+
+    def _open_bundled(self, name):
+        """Open a file shipped with the app (LICENSE, notices); fall back to the copy on GitHub."""
+        import sys
+        base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        path = os.path.join(base, name)
+        if os.path.exists(path):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(path))
+        else:
+            QDesktopServices.openUrl(QUrl("%s/blob/main/%s" % (SOURCE_URL, name)))
 
     # ---------- updates ----------
     def show_update(self, info, manual=False):

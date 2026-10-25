@@ -166,3 +166,15 @@ thread, `view.py` overlay/mirror drawing, `panel.py` and `ui.py` control panel a
 `winplat.py` Windows API calls (window list, capture exclusion, hotkeys), `capture.py` screen capture, `cli.py` and `ipc.py` the `mct` tool and its connection to the app, `help_text.py` all tooltips and
 Help page text, `app.py` wiring, tray, self-test. Help pictures are rendered by
 `packaging/make_help_images.py`.
+
+## Licence
+
+Copyright (C) 2026 EQQX2.
+
+MineColorTrack is free software: you can redistribute it and/or modify it under the terms of the GNU General
+Public License as published by the Free Software Foundation, either version 3 of the License, or (at your
+option) any later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See [LICENSE](LICENSE).
+
+It is built with PyQt6 (GPL-3.0), Qt, OpenCV, NumPy, ONNX Runtime, dxcam, mss and others; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

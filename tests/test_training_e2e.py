@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """End-to-end check of the AI pipeline: label -> export zip -> the Colab notebook's own code -> ONNX -> Detector.
 
 Slow (trains a small model on the CPU) and needs `ultralytics`, so it only runs when MCT_E2E=1:

@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Synthetic blocky Minecraft-like frame for tests (BGR numpy array)."""
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter

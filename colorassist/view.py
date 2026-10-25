@@ -1,3 +1,5 @@
+# Copyright (C) 2026 EQQX2
+# SPDX-License-Identifier: GPL-3.0-or-later
 """The window that draws the assist: a click-through overlay or a separate mirror window."""
 import time
 
