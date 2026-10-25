@@ -158,7 +158,7 @@ class Engine(QObject):
             self._detector_key = key
             self._detector, self._detector_error = None, None
             try:
-                self._detector = detector.Detector(path, prefer_gpu)
+                self._detector = detector.Detector(path, "auto" if prefer_gpu else "cpu")
             except Exception as exc:          # bad file, missing runtime, unsupported model...
                 self._detector_error = str(exc)
         return self._detector

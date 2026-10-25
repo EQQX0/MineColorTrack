@@ -97,7 +97,7 @@ def test_label_export_train_detect(tmp_path):
 
     os.chdir(tmp_path)
     onnx_path = run_notebook(str(tmp_path / "export.zip"), str(tmp_path), epochs=int(os.environ.get("MCT_EPOCHS", 25)))
-    det = Detector(onnx_path, prefer_gpu=False)
+    det = Detector(onnx_path, device="cpu")
     assert det.names == ["creeper", "pig"]
 
     found = total = 0

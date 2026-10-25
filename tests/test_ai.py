@@ -20,7 +20,7 @@ import fake_model  # noqa: E402
 @pytest.mark.parametrize("end2end", [False, True])
 def test_detector_reads_both_yolo_layouts(tmp_path, end2end):
     path = fake_model.build(str(tmp_path / "m.onnx"), end2end=end2end)
-    det = detector.Detector(path, prefer_gpu=False)
+    det = detector.Detector(path, device="cpu")
     assert det.names == ["pig", "villager"] and det.size == (64, 64) and det.end2end == end2end
     frame = np.zeros((128, 128, 3), np.uint8)                       # 2x the model input
     found = sorted(det.detect(frame, conf=0.5), key=lambda d: d.cls)

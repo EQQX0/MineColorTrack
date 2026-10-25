@@ -329,7 +329,7 @@ def cmd_model(b, a):
         if det.model_path:
             try:
                 from .detector import Detector
-                d = Detector(det.model_path, prefer_gpu=False)
+                d = Detector(det.model_path, device="cpu", warmup=False)
                 info["classes"], info["input_size"] = d.names, list(d.size)
             except Exception as exc:
                 info["problem"] = str(exc)
@@ -343,7 +343,7 @@ def cmd_model(b, a):
             raise CliError("Usage: mct model load FILE.onnx")
         path = os.path.abspath(a.file)
         try:
-            names = Detector(path, prefer_gpu=False).names
+            names = Detector(path, device="cpu", warmup=False).names
         except Exception as exc:
             raise CliError("This model cannot be used: %s" % exc)
         old = {e.name: e for e in det.entities}

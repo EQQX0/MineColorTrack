@@ -612,7 +612,7 @@ class Panel(QMainWindow):
     def model_names(self, path):
         """Class names of a model file (cached); raises detector.ModelError."""
         if path not in self._model_names:
-            self._model_names[path] = detector.Detector(path, prefer_gpu=False).names
+            self._model_names[path] = detector.Detector(path, device="cpu", warmup=False).names
         return self._model_names[path]
 
     def load_model(self):

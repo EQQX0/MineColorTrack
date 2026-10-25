@@ -692,10 +692,11 @@ def run_selftest(out_path, model_path=None):
             info["providers"] = detector.ort.get_available_providers()
         if model_path:
             frame = np.full((480, 640, 3), 120, np.uint8)
-            for gpu in (True, False):
-                det = detector.Detector(model_path, prefer_gpu=gpu)
+            for device in ("auto", "cpu"):
+                det = detector.Detector(model_path, device=device)
                 found = det.detect(frame, conf=0.3)
-                info["gpu" if gpu else "cpu"] = {"device": det.device, "classes": det.names, "detections": len(found)}
+                info[device] = {"device": det.device_label, "classes": det.names, "detections": len(found),
+                                "skipped": [k for k, _ in det.fallbacks], "notice": det.notice}
         return info
     check("ai_model", ai_check, bool(model_path))
 
