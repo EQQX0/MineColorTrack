@@ -575,7 +575,12 @@ class Panel(QMainWindow):
         self.confidence_slider = self._bind("slider", d, "confidence", R, "detection.confidence", lo=5, hi=95,
                                             suffix=" %")
         self._row(f, "detection.confidence", self.confidence_slider)
-        f.addRow("", self._bind("switch", lambda: self.cfg.ai, "prefer_gpu", R, "ai.prefer_gpu"))
+        self.device_combo = self._bind("choice", lambda: self.cfg.ai, "device", R, "ai.device",
+                                       choices_key=("AICfg", "device"), after=self._ai_edited)
+        self._row(f, "ai.device", self.device_combo)
+        self.fp16_switch = self._bind("switch", lambda: self.cfg.ai, "tensorrt_fp16", R, "ai.tensorrt_fp16",
+                                      after=self._ai_edited)
+        f.addRow("", self.fp16_switch)
         v.addWidget(c)
 
         c, cl = card("Entities in this model")

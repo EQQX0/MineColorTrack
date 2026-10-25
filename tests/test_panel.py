@@ -100,3 +100,15 @@ def test_licence_shown_and_files_present(panel):
             "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"   # official GPL-3.0 text
     assert os.path.exists(os.path.join(root, "THIRD_PARTY_NOTICES.md"))
     assert "GPL v3" in panel.licence_label.text() and "EQQX0" in panel.licence_label.text()
+
+
+def test_ai_device_choice_on_entities_page(panel):
+    combo = panel.device_combo
+    assert [combo.itemData(i) for i in range(combo.count())] == ["auto", "tensorrt", "cuda", "directml", "cpu"]
+    assert combo.toolTip() and panel.fp16_switch.toolTip()
+    combo.setCurrentIndex(combo.findData("cuda"))
+    assert panel.cfg.ai.device == "cuda"
+    panel.fp16_switch.setChecked(False)
+    assert panel.cfg.ai.tensorrt_fp16 is False
+    combo.setCurrentIndex(combo.findData("auto"))
+    panel.fp16_switch.setChecked(True)

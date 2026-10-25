@@ -103,7 +103,8 @@ class HotkeysCfg:
 @dataclass
 class AICfg:
     dataset_dir: str = ""       # "" = Documents\MineColorTrack dataset
-    prefer_gpu: bool = True
+    device: str = "auto"        # where the model runs: auto | tensorrt | cuda | directml | cpu
+    tensorrt_fp16: bool = True  # TensorRT may use half precision (faster, same results within rounding)
 
 
 @dataclass
@@ -146,6 +147,11 @@ CHOICES = {
                              ("mirror", "Separate mirror window")],
     ("DisplayCfg", "theme"): [("dark", "Dark"), ("light", "Light"),
                               ("contrast", "High contrast (black and yellow)")],
+    ("AICfg", "device"): [("auto", "Automatic (fastest that works)"),
+                          ("tensorrt", "TensorRT (NVIDIA, fastest)"),
+                          ("cuda", "CUDA (NVIDIA)"),
+                          ("directml", "DirectML (any DirectX 12 graphics card)"),
+                          ("cpu", "Processor only")],
 }
 
 
@@ -316,6 +322,9 @@ def load(path):
 def from_dict(data):
     """Settings from a dict (a settings file, or the running app's settings sent to the `mct` tool)."""
     cfg = _fill(AppConfig(), data)
+    ai = data.get("ai") if isinstance(data, dict) else None
+    if isinstance(ai, dict) and "device" not in ai and ai.get("prefer_gpu") is False:
+        cfg.ai.device = "cpu"       # 1.6 and older: "Use the graphics card when possible" switched off
     old_version = data.get("version", 1) if isinstance(data, dict) else 1
     if not isinstance(old_version, int) or old_version < 2:
         _migrate_v1(cfg)

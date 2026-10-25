@@ -152,13 +152,13 @@ class Engine(QObject):
             budget = 1.0 / max(1, self.cfg.capture.fps)
             self._stop.wait(max(0.0, budget - (time.perf_counter() - t0)))
 
-    def _get_detector(self, path, prefer_gpu):
-        key = (path, prefer_gpu)
+    def _get_detector(self, path, device, fp16):
+        key = (path, device, fp16)
         if key != self._detector_key:
             self._detector_key = key
             self._detector, self._detector_error = None, None
             try:
-                self._detector = detector.Detector(path, "auto" if prefer_gpu else "cpu")
+                self._detector = detector.Detector(path, device, fp16)
             except Exception as exc:          # bad file, missing runtime, unsupported model...
                 self._detector_error = str(exc)
         return self._detector
@@ -173,7 +173,7 @@ class Engine(QObject):
         det_cfg = prof.detection
         names, entities = [], {}
         if det_cfg.enabled and det_cfg.model_path:
-            det = self._get_detector(det_cfg.model_path, self.cfg.ai.prefer_gpu)
+            det = self._get_detector(det_cfg.model_path, self.cfg.ai.device, self.cfg.ai.tensorrt_fp16)
             res.ai_error = self._detector_error
             if det is not None:
                 res.ai_device = det.device
