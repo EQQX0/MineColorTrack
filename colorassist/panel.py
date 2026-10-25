@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (QApplication, QColorDialog, QComboBox, QFileDialog,
 from . import APP_NAME, COPYRIGHT, LICENSE_NAME, SOURCE_URL, __version__, dataset, detector, engine, winplat
 from .config import CHOICES, Entity, Profile, Target
 from .help_text import HELP, NAV_TIPS, TIPS
-from .ui import ColourButton, SliderField, ToggleSwitch, card, clear_layout, label, swatch
+from .ui import ColourButton, HotkeyEdit, SliderField, ToggleSwitch, card, clear_layout, label, swatch
 
 PAGES = ["Home", "Watch", "Targets", "Entities", "Outline", "Tracking", "Hotkeys", "Settings", "Help"]
 HELP_IMAGES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "help")
@@ -223,6 +223,10 @@ class Panel(QMainWindow):
             w = QLineEdit()
             w.editingFinished.connect(lambda: self._set(getter, attr, w.text().strip(), after))
             load = lambda o: w.setText(str(getattr(o, attr)))
+        elif kind == "hotkey":
+            w = HotkeyEdit()
+            w.hotkeyChanged.connect(lambda t: self._set(getter, attr, t, after))
+            load = lambda o: w.setValue(str(getattr(o, attr)))
         elif kind == "colour":
             w = ColourButton()
             w.setMinimumWidth(150)
@@ -823,11 +827,13 @@ class Panel(QMainWindow):
         k = lambda: self.cfg.hotkeys
         R = self._refreshers
         w, v = self._page("Hotkeys", "Work anywhere, also while the game window is active. "
-                                     "Examples: Ctrl+Alt+O, Shift+F7, Ctrl+Num5. Leave empty to disable.", "profiles")
+                                     "Click a box, then press the key or combination you want. "
+                                     "Esc cancels, Backspace clears (disables it).", "profiles")
         c, cl = card()
         f = self._form(cl)
         for attr in ("toggle_overlay", "next_profile", "toggle_outline", "save_screenshot"):
-            self._row(f, "hotkeys." + attr, self._bind("text", k, attr, R, "hotkeys." + attr))
+            self._row(f, "hotkeys." + attr, self._bind("hotkey", k, attr, R, "hotkeys." + attr,
+                                                 after=self.hotkeysApply.emit))
         f.addRow("", self._button("Apply hotkeys", "hotkeys_apply", self.hotkeysApply.emit, "primary"))
         self.hotkey_status = label("", "muted")
         f.addRow(self.hotkey_status)

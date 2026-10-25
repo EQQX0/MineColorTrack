@@ -273,6 +273,102 @@ class SliderField(QWidget):
             w.blockSignals(False)
 
 
+_KEY_NAMES = {Qt.Key.Key_Space: "Space", Qt.Key.Key_PageUp: "PageUp", Qt.Key.Key_PageDown: "PageDown",
+              Qt.Key.Key_End: "End", Qt.Key.Key_Home: "Home", Qt.Key.Key_Insert: "Insert",
+              Qt.Key.Key_Delete: "Delete", Qt.Key.Key_Pause: "Pause", Qt.Key.Key_ScrollLock: "ScrollLock"}
+_MODIFIER_KEYS = (Qt.Key.Key_Control, Qt.Key.Key_Shift, Qt.Key.Key_Alt, Qt.Key.Key_Meta, Qt.Key.Key_AltGr)
+
+
+def key_event_to_text(event):
+    """A key press as 'Ctrl+Alt+O' text, or None while only modifiers are down or the key is unsupported."""
+    key = event.key()
+    mods = event.modifiers()
+    if key in _MODIFIER_KEYS:
+        return None
+    if Qt.Key.Key_F1 <= key <= Qt.Key.Key_F24:
+        name = "F%d" % (key - Qt.Key.Key_F1 + 1)
+    elif Qt.Key.Key_0 <= key <= Qt.Key.Key_9 and mods & Qt.KeyboardModifier.KeypadModifier:
+        name = "Num%d" % (key - Qt.Key.Key_0)
+    elif Qt.Key.Key_0 <= key <= Qt.Key.Key_9 or Qt.Key.Key_A <= key <= Qt.Key.Key_Z:
+        name = chr(key)
+    elif Qt.Key(key) in _KEY_NAMES:
+        name = _KEY_NAMES[Qt.Key(key)]
+    else:
+        return None
+    parts = [label for flag, label in ((Qt.KeyboardModifier.ControlModifier, "Ctrl"),
+                                       (Qt.KeyboardModifier.AltModifier, "Alt"),
+                                       (Qt.KeyboardModifier.ShiftModifier, "Shift"),
+                                       (Qt.KeyboardModifier.MetaModifier, "Win")) if mods & flag]
+    return "+".join(parts + [name])
+
+
+class HotkeyEdit(QPushButton):
+    """Click it, then press the key or combination you want. Esc cancels, Backspace clears."""
+    hotkeyChanged = pyqtSignal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._value = ""
+        self._recording = False
+        self.setMinimumWidth(190)
+        self.setMaximumWidth(260)
+        self.setCheckable(False)
+        self.clicked.connect(self._start)
+        self._show()
+
+    def value(self):
+        return self._value
+
+    def setValue(self, text):
+        self._value = text or ""
+        self._stop()
+
+    def _show(self):
+        if self._recording:
+            self.setText("Press a key…")
+        else:
+            self.setText(self._value or "Not set (click to set)")
+
+    def _start(self):
+        self._recording = True
+        self._show()
+        self.grabKeyboard()
+
+    def _stop(self):
+        if self._recording:
+            self.releaseKeyboard()
+        self._recording = False
+        self._show()
+
+    def _commit(self, text):
+        self._value = text
+        self._stop()
+        self.hotkeyChanged.emit(text)
+
+    def event(self, e):
+        if self._recording and e.type() in (e.Type.KeyPress, e.Type.ShortcutOverride):
+            if e.type() == e.Type.KeyPress:
+                key = e.key()
+                if key == Qt.Key.Key_Escape:
+                    self._stop()
+                elif key == Qt.Key.Key_Backspace:
+                    self._commit("")
+                else:
+                    text = key_event_to_text(e)
+                    needs_mod = not (text and ("+" in text or text[0] == "F" or text in ("Pause", "ScrollLock")))
+                    if text and not needs_mod:
+                        self._commit(text)
+                    elif text:
+                        self.setText("Add Ctrl, Alt or Shift…")
+            e.accept()
+            return True
+        return super().event(e)
+
+    def focusOutEvent(self, e):
+        self._stop()
+        super().focusOutEvent(e)
+
+
 class ColourButton(QPushButton):
     def set_colour(self, hexcol):
         fg = readable_text(hexcol)
