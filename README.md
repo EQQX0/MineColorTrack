@@ -100,7 +100,9 @@ MineColorTrack does not include NVIDIA's libraries; install them yourself. For t
 1. An NVIDIA graphics card and a recent driver: the 580 series or newer for CUDA 13 (570.65 or newer for CUDA 12.8).
 2. The CUDA runtime and cuDNN 9: either `pip install onnxruntime-gpu[cuda,cudnn]` (puts them in the environment), or
    NVIDIA's CUDA Toolkit and cuDNN installers with their `bin` folders on `PATH`.
-3. For TensorRT only: TensorRT 10 for the same CUDA major version, with its `lib` folder on `PATH`.
+3. For TensorRT only: TensorRT 10 for the same CUDA major version, either `pip install "tensorrt-cu13>=10,<11"`
+   (use `tensorrt-cu12` for CUDA 12; the pin matters, because pip's newest is TensorRT 11, which ONNX Runtime does not
+   load yet) or NVIDIA's installer with its `lib` folder on `PATH`. MineColorTrack finds the pip copy by itself.
 
 Without them, TensorRT and CUDA are skipped with a message. In the NVIDIA build DirectML is not available, so the
 next step is the processor; in the installer's DirectML build, choosing TensorRT or CUDA falls back to DirectML.
